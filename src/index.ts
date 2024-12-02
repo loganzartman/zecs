@@ -1,15 +1,30 @@
+import type z from 'zod';
+import type { ZodSchema, ZodType } from 'zod';
+
 export type Empty = Record<never, never>;
 
+type EntityType = Record<string, unknown>;
+type ComponentSchema = ZodSchema<unknown>;
+type ComponentSchemas = Record<string, ComponentSchema>;
+export type InferEntityType<TComponentSchemas extends ComponentSchemas> = {
+  [TKey in keyof TComponentSchemas]: z.infer<TComponentSchemas[TKey]>;
+};
+export type EntityComponentSchemas<TEntity extends EntityType> = {
+  [TKey in keyof TEntity]: ZodType<TEntity[TKey]>;
+};
+
 export type AddComponent<
-  TEntity extends object,
+  TShape extends Record<string, unknown>,
   TComponentKey extends string,
-  TComponentData extends object,
-> = TEntity & { [key in TComponentKey]: TComponentData };
+  TComponentData,
+> = TShape & { [key in TComponentKey]: TComponentData };
 
 export type EcsWith<TQuery extends EcsQuery<any, any>> =
-  TQuery extends EcsQuery<infer TEntity, any> ? Ecs<TEntity> : never;
+  TQuery extends EcsQuery<infer TEntity, any>
+    ? Ecs<EntityComponentSchemas<TEntity>, TEntity>
+    : never;
 
-export class EcsQuery<TEntity extends object, TSelected extends TEntity> {
+export class EcsQuery<TEntity extends EntityType, TSelected extends TEntity> {
   filterFn: (entity: Partial<TEntity>) => entity is TSelected;
 
   private constructor(
@@ -19,11 +34,11 @@ export class EcsQuery<TEntity extends object, TSelected extends TEntity> {
   }
 
   static create(): EcsQuery<Empty, Empty> {
-    return new EcsQuery((entity): entity is Empty => true);
+    return new EcsQuery((_): _ is Empty => true);
   }
 
   *query<TEcsEntity extends TEntity>(
-    ecs: Ecs<TEcsEntity>,
+    ecs: Ecs<EntityComponentSchemas<TEcsEntity>, TEcsEntity>,
   ): Generator<TSelected> {
     for (const entity of ecs.entities) {
       if (this.filterFn(entity)) {
@@ -41,69 +56,82 @@ export class EcsQuery<TEntity extends object, TSelected extends TEntity> {
     );
   }
 
-  hasComponent<TComponentKey extends string, TComponentData extends object>(
+  hasComponent<
+    TComponentKey extends string,
+    TComponentSchema extends ComponentSchema,
+  >(
     key: TComponentKey,
-    _defaults: TComponentData,
+    _schema: TComponentSchema,
   ): EcsQuery<
-    AddComponent<TEntity, TComponentKey, TComponentData>,
-    AddComponent<TSelected, TComponentKey, TComponentData>
+    AddComponent<TEntity, TComponentKey, z.infer<TComponentSchema>>,
+    AddComponent<TSelected, TComponentKey, z.infer<TComponentSchema>>
   > {
     return new EcsQuery(
       (
         entity,
-      ): entity is AddComponent<TSelected, TComponentKey, TComponentData> =>
+      ): entity is AddComponent<TSelected, TComponentKey, TComponentSchema> =>
         this.filterFn(entity) && key in entity,
     );
   }
 }
 
-export class EcsSchema<TEntity extends object> {
-  defaults: TEntity;
+export class EcsSchema<TComponentSchemas extends ComponentSchemas> {
+  schemas: TComponentSchemas;
 
-  private constructor(args: { defaults: TEntity }) {
-    this.defaults = args.defaults;
+  private constructor(args: { schemas: TComponentSchemas }) {
+    this.schemas = args.schemas;
   }
 
   static create() {
-    return new EcsSchema<Empty>({ defaults: {} });
+    return new EcsSchema<Empty>({ schemas: {} });
   }
 
-  component<const TComponentKey extends string, TComponentData extends object>(
+  component<
+    const TComponentKey extends string,
+    TComponentSchema extends ComponentSchema,
+  >(
     key: TComponentKey,
-    defaults: TComponentData,
-  ): EcsSchema<AddComponent<TEntity, TComponentKey, TComponentData>> {
+    componentSchema: TComponentSchema,
+  ): EcsSchema<
+    AddComponent<TComponentSchemas, TComponentKey, TComponentSchema>
+  > {
     // TODO: any way to avoid the cast?
-    const newDefaults = { ...this.defaults, [key]: defaults } as AddComponent<
-      TEntity,
-      TComponentKey,
-      TComponentData
-    >;
-    return new EcsSchema({ defaults: newDefaults });
+    const newSchemas = {
+      ...this.schemas,
+      [key]: componentSchema,
+    } as AddComponent<TComponentSchemas, TComponentKey, TComponentSchema>;
+    return new EcsSchema({ schemas: newSchemas });
   }
 }
 
-export class Ecs<TEntity extends object> {
-  schema: EcsSchema<TEntity>;
+export class Ecs<
+  TComponentSchemas extends ComponentSchemas,
+  TEntity = InferEntityType<TComponentSchemas>,
+> {
+  schema: EcsSchema<TComponentSchemas>;
   entities: Partial<TEntity>[];
 
   private constructor(args: {
-    schema: EcsSchema<TEntity>;
+    schema: EcsSchema<TComponentSchemas>;
     entities: Partial<TEntity>[];
   }) {
     this.schema = args.schema;
     this.entities = args.entities;
   }
 
-  static fromEmpty<TEntity extends object>(
-    schema: EcsSchema<TEntity>,
-  ): Ecs<TEntity> {
+  static fromEmpty<TComponentSchemas extends ComponentSchemas>(
+    schema: EcsSchema<TComponentSchemas>,
+  ): Ecs<TComponentSchemas> {
     return new Ecs({ schema, entities: [] });
   }
 
-  static from<TEntity extends object>(args: {
-    schema: EcsSchema<TEntity>;
-    entities: Partial<NoInfer<TEntity & { [key: string]: unknown }>>[];
-  }): Ecs<TEntity> {
+  static from<
+    TComponentSchemas extends ComponentSchemas,
+    TEntity = InferEntityType<TComponentSchemas>,
+  >(args: {
+    schema: EcsSchema<TComponentSchemas>;
+    entities: Partial<NoInfer<TEntity> & { [key: string]: unknown }>[];
+  }): Ecs<TComponentSchemas, TEntity> {
     return new Ecs(args);
   }
 }
