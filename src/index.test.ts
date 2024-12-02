@@ -194,4 +194,41 @@ describe('zecs', () => {
       expect(hurtEntities).toEqual([hurtEntity]);
     });
   });
+
+  describe('serialization', () => {
+    it('can serialize and deserialize an ecs', () => {
+      const healthSchema = z.number();
+      const positionSchema = z.object({ x: z.number(), y: z.number() });
+      const velocitySchema = z.object({ dx: z.number(), dy: z.number() });
+
+      const schema = EcsSchema.create()
+        .component('health', healthSchema)
+        .component('position', positionSchema)
+        .component('velocity', velocitySchema);
+
+      const healthfulEntity = {
+        health: 1,
+        position: { x: 0, y: 0 },
+      };
+
+      const movableEntity = {
+        health: 1,
+        position: { x: 0, y: 0 },
+        velocity: { dx: 1, dy: 0 },
+      };
+
+      const ecs = Ecs.from({
+        schema,
+        entities: [healthfulEntity, movableEntity],
+      });
+
+      const serialized = JSON.stringify(ecs.serialize());
+      const deserialized = Ecs.deserialize({
+        schema,
+        data: JSON.parse(serialized),
+      });
+
+      expect(deserialized.entities).toEqual(ecs.entities);
+    });
+  });
 });

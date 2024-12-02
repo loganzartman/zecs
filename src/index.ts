@@ -1,5 +1,6 @@
-import type z from 'zod';
+import z from 'zod';
 import type { ZodSchema, ZodType } from 'zod';
+import packageJson from '../package.json';
 
 export type Empty = Record<never, never>;
 
@@ -133,5 +134,26 @@ export class Ecs<
     entities: Partial<NoInfer<TEntity> & { [key: string]: unknown }>[];
   }): Ecs<TComponentSchemas, TEntity> {
     return new Ecs(args);
+  }
+
+  static deserialize<TComponentSchemas extends ComponentSchemas>({
+    schema,
+    data,
+  }: {
+    schema: EcsSchema<TComponentSchemas>;
+    data: unknown;
+  }): Ecs<TComponentSchemas> {
+    const dataSchema = z.object({
+      zecs: z.literal(packageJson.version),
+      entities: z.array(z.object(schema.schemas).partial()),
+    });
+    return new Ecs<TComponentSchemas>({
+      schema,
+      entities: dataSchema.parse(data).entities,
+    });
+  }
+
+  serialize(): Readonly<unknown> {
+    return { zecs: packageJson.version, entities: this.entities };
   }
 }
