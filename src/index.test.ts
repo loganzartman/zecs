@@ -1,20 +1,20 @@
-import { Ecs, EcsQuery, EcsSchema, EcsWith } from ".";
+import { Ecs, EcsQuery, EcsSchema, type EcsWith } from '.';
 
-describe("index", () => {
-  it("works end-to-end", () => {
+describe('index', () => {
+  it('works end-to-end', () => {
     const healthComponent = { health: 1 };
     const positionComponent = { x: 0, y: 0 };
     const velocityComponent = { dx: 0, dy: 0 };
 
-    const healthful = EcsQuery.create().hasComponent("health", healthComponent);
+    const healthful = EcsQuery.create().hasComponent('health', healthComponent);
     const movable = EcsQuery.create()
-      .hasComponent("position", positionComponent)
-      .hasComponent("velocity", velocityComponent);
+      .hasComponent('position', positionComponent)
+      .hasComponent('velocity', velocityComponent);
 
     const schema = EcsSchema.create()
-      .component("health", healthComponent)
-      .component("position", positionComponent)
-      .component("velocity", velocityComponent);
+      .component('health', healthComponent)
+      .component('position', positionComponent)
+      .component('velocity', velocityComponent);
 
     const healthfulEntity = {
       position: { x: 0, y: 0 },
@@ -27,6 +27,7 @@ describe("index", () => {
       health: { health: 1 },
     } as const;
 
+    // @ts-expect-error WIP
     const ecs = Ecs.fromEntities(schema, [healthfulEntity, movableEntity]);
 
     function healthSystem(ecs: EcsWith<typeof healthful>) {

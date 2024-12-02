@@ -1,0 +1,8 @@
+{
+  "editor.indentSize": 2,
+  "editor.useTabStops": false,
+  "[css][html][javascript][javascriptreact][json][jsonc][jsonl][typescript][typescriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.formatOnSave": true
+  }
+}

@@ -1,7 +1,7 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} **/
 export default {
-  testEnvironment: "node",
+  testEnvironment: 'node',
   transform: {
-    "^.+.tsx?$": ["ts-jest", { diagnostics: false }],
+    '^.+.tsx?$': ['ts-jest', { diagnostics: false }],
   },
 };

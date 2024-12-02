@@ -8,7 +8,11 @@
   "scripts": {
     "build": "parcel build",
     "types": "tsc --noEmit --project tsconfig.json",
-    "test": "jest"
+    "test": "jest",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "check:ci": "biome ci .",
+    "ci-checks": "pnpm types && pnpm check:ci && pnpm test"
   },
   "keywords": [],
   "author": "Logan Zartman",
@@ -18,6 +22,7 @@
     "parcel": "^2.13.2"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
     "@types/jest": "^29.5.14",
     "jest": "^29.7.0",
     "ts-jest": "^29.2.5",
