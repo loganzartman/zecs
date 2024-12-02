@@ -49,6 +49,15 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          registry-url: "https://registry.npmjs.org"
+      - name: Enable corepack
+        run: corepack enable
       - uses: actions/download-artifact@v4
         with:
           name: dist-artifacts

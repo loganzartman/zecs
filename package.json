@@ -1,13 +1,11 @@
 {
   "name": "zecs",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "strongly-typed entity-component-system implementation for hobby use",
   "source": "src/index.ts",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "type": "module",
   "scripts": {
     "build": "parcel build",
