@@ -100,10 +100,10 @@ export class Ecs<TEntity extends object> {
     return new Ecs({ schema, entities: [] });
   }
 
-  static fromEntities<TEntity extends object>(
-    schema: EcsSchema<TEntity>,
-    entities: Partial<NoInfer<TEntity & { [key: string]: unknown }>>[],
-  ): Ecs<TEntity> {
-    return new Ecs({ schema, entities });
+  static from<TEntity extends object>(args: {
+    schema: EcsSchema<TEntity>;
+    entities: Partial<NoInfer<TEntity & { [key: string]: unknown }>>[];
+  }): Ecs<TEntity> {
+    return new Ecs(args);
   }
 }

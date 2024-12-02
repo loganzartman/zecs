@@ -27,7 +27,10 @@ describe('zecs', () => {
       health: { health: 1 },
     } as const;
 
-    const ecs = Ecs.fromEntities(schema, [healthfulEntity, movableEntity]);
+    const ecs = Ecs.from({
+      schema,
+      entities: [healthfulEntity, movableEntity],
+    });
 
     function healthSystem(ecs: EcsWith<typeof healthful>) {
       for (const ent of healthful.query(ecs)) {
@@ -75,11 +78,10 @@ describe('zecs', () => {
         position: { x: 0, y: 0 },
       } as const;
 
-      const ecs = Ecs.fromEntities(schema, [
-        healthfulEntity1,
-        unhealthfulEntity,
-        healthfulEntity2,
-      ]);
+      const ecs = Ecs.from({
+        schema,
+        entities: [healthfulEntity1, unhealthfulEntity, healthfulEntity2],
+      });
 
       const healthfulEntities = [...healthful.query(ecs)];
 
@@ -107,7 +109,10 @@ describe('zecs', () => {
         position: { x: 0, y: 0 },
       } as const;
 
-      const ecs = Ecs.fromEntities(schema, [movableEntity, immovableEntity]);
+      const ecs = Ecs.from({
+        schema,
+        entities: [movableEntity, immovableEntity],
+      });
 
       const movableEntities = [...movable.query(ecs)];
 
@@ -133,7 +138,7 @@ describe('zecs', () => {
         health: { health: 0 },
       } as const;
 
-      const ecs = Ecs.fromEntities(schema, [aliveEntity, deadEntity]);
+      const ecs = Ecs.from({ schema, entities: [aliveEntity, deadEntity] });
 
       const aliveEntities = [...alive.query(ecs)];
 
@@ -158,7 +163,7 @@ describe('zecs', () => {
         health: { health: 0.5 },
       } as const;
 
-      const ecs = Ecs.fromEntities(schema, [healthyEntity, hurtEntity]);
+      const ecs = Ecs.from({ schema, entities: [healthyEntity, hurtEntity] });
 
       const hurtEntities = [...hurt.query(ecs)];
 
