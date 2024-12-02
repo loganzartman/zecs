@@ -231,4 +231,36 @@ describe('zecs', () => {
       expect(deserialized.entities).toEqual(ecs.entities);
     });
   });
+
+  describe('filter', () => {
+    it('can filter entities', () => {
+      const healthSchema = z.number();
+
+      const schema = EcsSchema.create().component('health', healthSchema);
+
+      const healthfulEntity1 = {
+        health: 1,
+      };
+      const healthfulEntity2 = {
+        health: 2,
+      };
+      const unhealthfulEntity = {
+        health: 0,
+      };
+
+      const ecs = Ecs.from({
+        schema,
+        entities: [healthfulEntity1, healthfulEntity2, unhealthfulEntity],
+      });
+
+      const alive = EcsQuery.create()
+        .hasComponent('health', healthSchema)
+        .where(({ health }) => health > 0);
+
+      ecs.filter(alive);
+
+      expect(ecs.entities).not.toContain(unhealthfulEntity);
+      expect(ecs.entities).toEqual([healthfulEntity1, healthfulEntity2]);
+    });
+  });
 });

@@ -107,7 +107,8 @@ export class EcsSchema<TComponentSchemas extends ComponentSchemas> {
 
 export class Ecs<
   TComponentSchemas extends ComponentSchemas,
-  TEntity = InferEntityType<TComponentSchemas>,
+  TEntity extends
+    InferEntityType<TComponentSchemas> = InferEntityType<TComponentSchemas>,
 > {
   schema: EcsSchema<TComponentSchemas>;
   entities: Partial<TEntity>[];
@@ -128,7 +129,8 @@ export class Ecs<
 
   static from<
     TComponentSchemas extends ComponentSchemas,
-    TEntity = InferEntityType<TComponentSchemas>,
+    TEntity extends
+      InferEntityType<TComponentSchemas> = InferEntityType<TComponentSchemas>,
   >(args: {
     schema: EcsSchema<TComponentSchemas>;
     entities: Partial<NoInfer<TEntity> & { [key: string]: unknown }>[];
@@ -155,5 +157,11 @@ export class Ecs<
 
   serialize(): Readonly<unknown> {
     return { zecs: packageJson.version, entities: this.entities };
+  }
+
+  filter(query: EcsQuery<TEntity, TEntity>): void {
+    this.entities = [
+      ...query.query(this as Ecs<EntityComponentSchemas<TEntity>, TEntity>),
+    ];
   }
 }
