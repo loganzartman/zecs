@@ -90,4 +90,11 @@ export class Ecs<TEntity extends object> {
   ): Ecs<TEntity> {
     return new Ecs({ schema, entities: [] });
   }
+
+  static fromEntities<TEntity extends object>(
+    schema: EcsSchema<TEntity>,
+    entities: Partial<TEntity>[],
+  ): Ecs<TEntity> {
+    return new Ecs({ schema, entities });
+  }
 }
