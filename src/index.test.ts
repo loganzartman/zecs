@@ -27,7 +27,6 @@ describe('index', () => {
       health: { health: 1 },
     } as const;
 
-    // @ts-expect-error WIP
     const ecs = Ecs.fromEntities(schema, [healthfulEntity, movableEntity]);
 
     function healthSystem(ecs: EcsWith<typeof healthful>) {

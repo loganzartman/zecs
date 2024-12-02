@@ -1,4 +1,4 @@
-export type Empty = { [key: string]: never };
+export type Empty = Record<never, never>;
 
 export type AddComponent<
   TEntity extends object,
@@ -93,7 +93,7 @@ export class Ecs<TEntity extends object> {
 
   static fromEntities<TEntity extends object>(
     schema: EcsSchema<TEntity>,
-    entities: Partial<TEntity>[],
+    entities: Partial<NoInfer<TEntity>>[],
   ): Ecs<TEntity> {
     return new Ecs({ schema, entities });
   }
