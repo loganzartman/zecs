@@ -51,7 +51,7 @@ describe('zecs', () => {
     expect(movableEntity.position.x).toBe(1);
   });
 
-  describe('component queries', () => {
+  describe('hasComponent queries', () => {
     it('can query for entities with a single component', () => {
       const healthComponent = { health: 1 };
 
@@ -84,6 +84,85 @@ describe('zecs', () => {
       const healthfulEntities = [...healthful.query(ecs)];
 
       expect(healthfulEntities).toEqual([healthfulEntity1, healthfulEntity2]);
+    });
+
+    it('can query for entities with two components', () => {
+      const positionComponent = { x: 0, y: 0 };
+      const velocityComponent = { dx: 0, dy: 0 };
+
+      const movable = EcsQuery.create()
+        .hasComponent('position', positionComponent)
+        .hasComponent('velocity', velocityComponent);
+
+      const schema = EcsSchema.create()
+        .component('position', positionComponent)
+        .component('velocity', velocityComponent);
+
+      const movableEntity = {
+        position: { x: 0, y: 0 },
+        velocity: { dx: 0, dy: 0 },
+      } as const;
+
+      const immovableEntity = {
+        position: { x: 0, y: 0 },
+      } as const;
+
+      const ecs = Ecs.fromEntities(schema, [movableEntity, immovableEntity]);
+
+      const movableEntities = [...movable.query(ecs)];
+
+      expect(movableEntities).toEqual([movableEntity]);
+    });
+  });
+
+  describe('where queries', () => {
+    it('can query for an entity with specific data', () => {
+      const healthComponent = { health: 1 };
+
+      const alive = EcsQuery.create()
+        .hasComponent('health', healthComponent)
+        .where(({ health }) => health.health > 0);
+
+      const schema = EcsSchema.create().component('health', healthComponent);
+
+      const aliveEntity = {
+        health: { health: 1 },
+      } as const;
+
+      const deadEntity = {
+        health: { health: 0 },
+      } as const;
+
+      const ecs = Ecs.fromEntities(schema, [aliveEntity, deadEntity]);
+
+      const aliveEntities = [...alive.query(ecs)];
+
+      expect(aliveEntities).toEqual([aliveEntity]);
+    });
+
+    it('can be chained', () => {
+      const healthComponent = { health: 1 };
+
+      const hurt = EcsQuery.create()
+        .hasComponent('health', healthComponent)
+        .where(({ health }) => health.health > 0)
+        .where(({ health }) => health.health < 1);
+
+      const schema = EcsSchema.create().component('health', healthComponent);
+
+      const healthyEntity = {
+        health: { health: 1 },
+      } as const;
+
+      const hurtEntity = {
+        health: { health: 0.5 },
+      } as const;
+
+      const ecs = Ecs.fromEntities(schema, [healthyEntity, hurtEntity]);
+
+      const hurtEntities = [...hurt.query(ecs)];
+
+      expect(hurtEntities).toEqual([hurtEntity]);
     });
   });
 });

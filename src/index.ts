@@ -10,12 +10,12 @@ export type EcsWith<TQuery extends EcsQuery<any, any>> =
   TQuery extends EcsQuery<infer TEntity, any> ? Ecs<TEntity> : never;
 
 export class EcsQuery<TEntity extends object, TSelected extends TEntity> {
-  filter: (entity: Partial<TEntity>) => entity is TSelected;
+  filterFn: (entity: Partial<TEntity>) => entity is TSelected;
 
   private constructor(
     filter: (entity: Partial<TEntity>) => entity is TSelected,
   ) {
-    this.filter = filter;
+    this.filterFn = filter;
   }
 
   static create(): EcsQuery<Empty, Empty> {
@@ -26,25 +26,34 @@ export class EcsQuery<TEntity extends object, TSelected extends TEntity> {
     ecs: Ecs<TEcsEntity>,
   ): Generator<TSelected> {
     for (const entity of ecs.entities) {
-      if (this.filter(entity)) {
+      if (this.filterFn(entity)) {
         yield entity;
       }
     }
   }
 
+  where(
+    predicate: (entity: TSelected) => boolean,
+  ): EcsQuery<TEntity, TSelected> {
+    return new EcsQuery(
+      (entity): entity is TSelected =>
+        this.filterFn(entity) && predicate(entity),
+    );
+  }
+
   hasComponent<TComponentKey extends string, TComponentData extends object>(
     key: TComponentKey,
-    defaults: TComponentData,
+    _defaults: TComponentData,
   ): EcsQuery<
     AddComponent<TEntity, TComponentKey, TComponentData>,
     AddComponent<TSelected, TComponentKey, TComponentData>
   > {
-    const newFilter = (
-      entity: Partial<AddComponent<TEntity, TComponentKey, TComponentData>>,
-    ): entity is AddComponent<TSelected, TComponentKey, TComponentData> =>
-      this.filter(entity) && key in entity;
-
-    return new EcsQuery(newFilter);
+    return new EcsQuery(
+      (
+        entity,
+      ): entity is AddComponent<TSelected, TComponentKey, TComponentData> =>
+        this.filterFn(entity) && key in entity,
+    );
   }
 }
 
