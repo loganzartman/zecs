@@ -93,7 +93,7 @@ export class Ecs<TEntity extends object> {
 
   static fromEntities<TEntity extends object>(
     schema: EcsSchema<TEntity>,
-    entities: Partial<NoInfer<TEntity>>[],
+    entities: Partial<NoInfer<TEntity & { [key: string]: unknown }>>[],
   ): Ecs<TEntity> {
     return new Ecs({ schema, entities });
   }

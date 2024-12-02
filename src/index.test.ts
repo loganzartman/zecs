@@ -1,6 +1,6 @@
 import { Ecs, EcsQuery, EcsSchema, type EcsWith } from '.';
 
-describe('index', () => {
+describe('zecs', () => {
   it('works end-to-end', () => {
     const healthComponent = { health: 1 };
     const positionComponent = { x: 0, y: 0 };
@@ -49,5 +49,41 @@ describe('index', () => {
     expect(movableEntity.position.x).toBe(0);
     moveSystem(ecs, 1);
     expect(movableEntity.position.x).toBe(1);
+  });
+
+  describe('component queries', () => {
+    it('can query for entities with a single component', () => {
+      const healthComponent = { health: 1 };
+
+      const healthful = EcsQuery.create().hasComponent(
+        'health',
+        healthComponent,
+      );
+
+      const schema = EcsSchema.create().component('health', healthComponent);
+
+      const healthfulEntity1 = {
+        position: { x: 0, y: 0 },
+        health: { health: 1 },
+      } as const;
+
+      const healthfulEntity2 = {
+        health: { health: 1 },
+      } as const;
+
+      const unhealthfulEntity = {
+        position: { x: 0, y: 0 },
+      } as const;
+
+      const ecs = Ecs.fromEntities(schema, [
+        healthfulEntity1,
+        unhealthfulEntity,
+        healthfulEntity2,
+      ]);
+
+      const healthfulEntities = [...healthful.query(ecs)];
+
+      expect(healthfulEntities).toEqual([healthfulEntity1, healthfulEntity2]);
+    });
   });
 });
