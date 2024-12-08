@@ -1,21 +1,22 @@
 import z from 'zod';
-import { Ecs, EcsQuery, EcsSchema, type EcsWith } from '.';
+import { component, query, ecs, type ECSWith } from '.';
 
 describe('zecs', () => {
   it('works end-to-end', () => {
-    const healthSchema = z.number();
-    const positionSchema = z.object({ x: z.number(), y: z.number() });
-    const velocitySchema = z.object({ dx: z.number(), dy: z.number() });
+    const health = component('health', z.number());
+    const position = component(
+      'position',
+      z.object({ x: z.number(), y: z.number() }),
+    );
+    const velocity = component(
+      'velocity',
+      z.object({ dx: z.number(), dy: z.number() }),
+    );
 
-    const healthful = EcsQuery.create().hasComponent('health', healthSchema);
-    const movable = EcsQuery.create()
-      .hasComponent('position', positionSchema)
-      .hasComponent('velocity', velocitySchema);
+    const healthful = query().has(health);
+    const movable = query().has(position).has(velocity);
 
-    const schema = EcsSchema.create()
-      .component('health', healthSchema)
-      .component('position', positionSchema)
-      .component('velocity', velocitySchema);
+    const e = ecs([health, position, velocity]);
 
     const healthfulEntity = {
       health: 1,
@@ -28,36 +29,32 @@ describe('zecs', () => {
       velocity: { dx: 1, dy: 0 },
     };
 
-    const ecs = Ecs.from({
-      schema,
-      entities: [healthfulEntity, movableEntity],
-    });
+    e.addAll([healthfulEntity, movableEntity]);
 
-    function healthSystem(ecs: EcsWith<typeof healthful>) {
-      for (const ent of healthful.query(ecs)) {
+    function healthSystem(e: ECSWith<typeof healthful>) {
+      for (const ent of healthful.query(e)) {
         ent.health += 1;
       }
     }
 
-    function moveSystem(ecs: EcsWith<typeof movable>, dt: number) {
-      for (const ent of movable.query(ecs)) {
+    function moveSystem(e: ECSWith<typeof movable>, dt: number) {
+      for (const ent of movable.query(e)) {
         ent.position.x += ent.velocity.dx * dt;
         ent.position.y += ent.velocity.dy * dt;
       }
     }
 
     expect(healthfulEntity.health).toBe(1);
-    healthSystem(ecs);
+    healthSystem(e);
     expect(healthfulEntity.health).toBe(2);
 
     expect(movableEntity.position.x).toBe(0);
-    moveSystem(ecs, 1);
+    moveSystem(e, 1);
     expect(movableEntity.position.x).toBe(1);
   });
 
   it('rejects entities with components not matching schema', () => {
-    const healthSchema = z.number();
-    const schema = EcsSchema.create().component('health', healthSchema);
+    const health = component('health', z.number());
 
     const healthfulEntity1 = {
       position: { x: 0, y: 0 },
@@ -65,29 +62,25 @@ describe('zecs', () => {
     };
 
     const healthfulEntity2 = {
-      health: { value: 1 },
+      health: 1,
     };
 
     const unhealthfulEntity = {
       position: { x: 0, y: 0 },
     };
 
-    Ecs.from({
-      schema,
-      entities: [
-        healthfulEntity1,
-        unhealthfulEntity,
-        // @ts-expect-error: healthfulEntity2 has the wrong schema
-        healthfulEntity2,
-      ],
-    });
+    const e = ecs([health]);
+
+    e.add(healthfulEntity1);
+    e.add(healthfulEntity2);
+    // @ts-expect-error missing health component
+    e.add(unhealthfulEntity);
   });
 
-  describe('hasComponent queries', () => {
+  describe('has() queries', () => {
     it('can query for entities with a single component', () => {
-      const healthSchema = z.number();
-      const healthful = EcsQuery.create().hasComponent('health', healthSchema);
-      const schema = EcsSchema.create().component('health', healthSchema);
+      const health = component('health', z.number());
+      const healthful = query().has(health);
 
       const healthfulEntity1 = {
         position: { x: 0, y: 0 },
@@ -102,43 +95,38 @@ describe('zecs', () => {
         position: { x: 0, y: 0 },
       };
 
-      const ecs = Ecs.from({
-        schema,
-        entities: [healthfulEntity1, unhealthfulEntity, healthfulEntity2],
-      });
+      const e = ecs([health]);
+      e.addAll([healthfulEntity1, healthfulEntity2, unhealthfulEntity]);
 
-      const healthfulEntities = [...healthful.query(ecs)];
+      const healthfulEntities = [...healthful.query(e)];
 
       expect(healthfulEntities).toEqual([healthfulEntity1, healthfulEntity2]);
     });
 
     it('can query for entities with two components', () => {
-      const positionSchema = z.object({ x: z.number(), y: z.number() });
-      const velocitySchema = z.object({ dx: z.number(), dy: z.number() });
-
-      const movable = EcsQuery.create()
-        .hasComponent('position', positionSchema)
-        .hasComponent('velocity', velocitySchema);
-
-      const schema = EcsSchema.create()
-        .component('position', positionSchema)
-        .component('velocity', velocitySchema);
+      const position = component(
+        'position',
+        z.object({ x: z.number(), y: z.number() }),
+      );
+      const velocity = component(
+        'velocity',
+        z.object({ dx: z.number(), dy: z.number() }),
+      );
+      const movable = query().has(position).has(velocity);
 
       const movableEntity = {
         position: { x: 0, y: 0 },
         velocity: { dx: 0, dy: 0 },
-      } as const;
+      };
 
       const immovableEntity = {
         position: { x: 0, y: 0 },
-      } as const;
+      };
 
-      const ecs = Ecs.from({
-        schema,
-        entities: [movableEntity, immovableEntity],
-      });
+      const e = ecs([position, velocity]);
+      e.addAll([movableEntity, immovableEntity]);
 
-      const movableEntities = [...movable.query(ecs)];
+      const movableEntities = [...movable.query(e)];
 
       expect(movableEntities).toEqual([movableEntity]);
     });
@@ -146,13 +134,10 @@ describe('zecs', () => {
 
   describe('where queries', () => {
     it('can query for an entity with specific data', () => {
-      const healthSchema = z.number();
-
-      const alive = EcsQuery.create()
-        .hasComponent('health', healthSchema)
+      const health = component('health', z.number());
+      const alive = query()
+        .has(health)
         .where(({ health }) => health > 0);
-
-      const schema = EcsSchema.create().component('health', healthSchema);
 
       const aliveEntity = {
         health: 1,
@@ -162,22 +147,20 @@ describe('zecs', () => {
         health: 0,
       } as const;
 
-      const ecs = Ecs.from({ schema, entities: [aliveEntity, deadEntity] });
+      const e = ecs([health]);
+      e.addAll([aliveEntity, deadEntity]);
 
-      const aliveEntities = [...alive.query(ecs)];
+      const aliveEntities = [...alive.query(e)];
 
       expect(aliveEntities).toEqual([aliveEntity]);
     });
 
     it('can be chained', () => {
-      const healthSchema = z.number();
-
-      const hurt = EcsQuery.create()
-        .hasComponent('health', healthSchema)
+      const health = component('health', z.number());
+      const hurt = query()
+        .has(health)
         .where(({ health }) => health > 0)
         .where(({ health }) => health < 1);
-
-      const schema = EcsSchema.create().component('health', healthSchema);
 
       const healthyEntity = {
         health: 1,
@@ -187,9 +170,10 @@ describe('zecs', () => {
         health: 0.5,
       } as const;
 
-      const ecs = Ecs.from({ schema, entities: [healthyEntity, hurtEntity] });
+      const e = ecs([health]);
+      e.addAll([healthyEntity, hurtEntity]);
 
-      const hurtEntities = [...hurt.query(ecs)];
+      const hurtEntities = [...hurt.query(e)];
 
       expect(hurtEntities).toEqual([hurtEntity]);
     });
@@ -197,14 +181,15 @@ describe('zecs', () => {
 
   describe('serialization', () => {
     it('can serialize and deserialize an ecs', () => {
-      const healthSchema = z.number();
-      const positionSchema = z.object({ x: z.number(), y: z.number() });
-      const velocitySchema = z.object({ dx: z.number(), dy: z.number() });
-
-      const schema = EcsSchema.create()
-        .component('health', healthSchema)
-        .component('position', positionSchema)
-        .component('velocity', velocitySchema);
+      const health = component('health', z.number());
+      const position = component(
+        'position',
+        z.object({ x: z.number(), y: z.number() }),
+      );
+      const velocity = component(
+        'velocity',
+        z.object({ dx: z.number(), dy: z.number() }),
+      );
 
       const healthfulEntity = {
         health: 1,
@@ -217,50 +202,16 @@ describe('zecs', () => {
         velocity: { dx: 1, dy: 0 },
       };
 
-      const ecs = Ecs.from({
-        schema,
-        entities: [healthfulEntity, movableEntity],
-      });
+      const e = ecs([health, position, velocity]);
+      e.addAll([healthfulEntity, movableEntity]);
 
-      const serialized = JSON.stringify(ecs.serialize());
-      const deserialized = Ecs.deserialize({
-        schema,
-        data: JSON.parse(serialized),
-      });
+      const originalEntities = [...e.entities];
+      const serialized = JSON.stringify(e.toJSON());
 
-      expect(deserialized.entities).toEqual(ecs.entities);
-    });
-  });
+      e.loadJSON(JSON.parse(serialized));
+      const deserializedEntities = [...e.entities];
 
-  describe('filter', () => {
-    it('can filter entities', () => {
-      const healthSchema = z.number();
-
-      const schema = EcsSchema.create().component('health', healthSchema);
-
-      const healthfulEntity1 = {
-        health: 1,
-      };
-      const healthfulEntity2 = {
-        health: 2,
-      };
-      const unhealthfulEntity = {
-        health: 0,
-      };
-
-      const ecs = Ecs.from({
-        schema,
-        entities: [healthfulEntity1, healthfulEntity2, unhealthfulEntity],
-      });
-
-      const alive = EcsQuery.create()
-        .hasComponent('health', healthSchema)
-        .where(({ health }) => health > 0);
-
-      ecs.filter(alive);
-
-      expect(ecs.entities).not.toContain(unhealthfulEntity);
-      expect(ecs.entities).toEqual([healthfulEntity1, healthfulEntity2]);
+      expect(deserializedEntities).toEqual(originalEntities);
     });
   });
 });

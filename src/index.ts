@@ -1,167 +1,134 @@
 import z from 'zod';
-import type { ZodSchema, ZodType } from 'zod';
+import type { ZodType } from 'zod';
 import packageJson from '../package.json';
+import type { ZodTypeAny } from 'zod';
+
+type Expand<T> = T extends any ? { [K in keyof T]: T[K] } : never;
 
 export type Empty = Record<never, never>;
 
-type EntityType = Record<string, unknown>;
-type ComponentSchema = ZodSchema<unknown>;
-type ComponentSchemas = Record<string, ComponentSchema>;
-export type InferEntityType<TComponentSchemas extends ComponentSchemas> = {
-  [TKey in keyof TComponentSchemas]: z.infer<TComponentSchemas[TKey]>;
-};
-export type EntityComponentSchemas<TEntity extends EntityType> = {
-  [TKey in keyof TEntity]: ZodType<TEntity[TKey]>;
+export type Component<TName extends string, TZodSchema extends ZodTypeAny> = {
+  name: TName;
+  schema: TZodSchema;
 };
 
-export type AddComponent<
-  TShape extends Record<string, unknown>,
-  TComponentKey extends string,
-  TComponentData,
-> = TShape & { [key in TComponentKey]: TComponentData };
+export type EntityLike = Record<string, unknown>;
 
-export type EcsWith<TQuery extends EcsQuery<any, any>> =
-  TQuery extends EcsQuery<infer TEntity, any>
-    ? Ecs<EntityComponentSchemas<TEntity>, TEntity>
-    : never;
+export type ComponentArrayLike = Array<Component<string, ZodTypeAny>>;
 
-export class EcsQuery<TEntity extends EntityType, TSelected extends TEntity> {
-  filterFn: (entity: Partial<TEntity>) => entity is TSelected;
+export type ComponentsEntity<TComponents extends ComponentArrayLike> = Expand<{
+  [TComponent in TComponents[number] as TComponent['name']]: z.infer<
+    TComponent['schema']
+  >;
+}>;
 
-  private constructor(
-    filter: (entity: Partial<TEntity>) => entity is TSelected,
-  ) {
-    this.filterFn = filter;
+export type EntityComponent<TEntity extends EntityLike> = {
+  [Key in keyof TEntity]: Component<Key & string, ZodType<TEntity[Key]>>;
+}[keyof TEntity];
+
+export type ECSWith<TQuery extends Query<EntityLike, EntityLike>> =
+  TQuery extends Query<infer TInput, any> ? ECS<Expand<TInput>> : never;
+
+export function component<
+  TName extends string,
+  const TZodSchema extends ZodTypeAny,
+>(name: TName, schema: TZodSchema): Component<TName, TZodSchema> {
+  return { name, schema };
+}
+
+export class ECS<TEntity extends EntityLike> {
+  components: Array<EntityComponent<TEntity>>;
+  entities: Array<Partial<TEntity>>;
+
+  constructor(components: Array<EntityComponent<TEntity>>) {
+    this.components = components;
+    this.entities = [];
   }
 
-  static create(): EcsQuery<Empty, Empty> {
-    return new EcsQuery((_): _ is Empty => true);
+  serializationSchema() {
+    return z.object({
+      version: z.literal(packageJson.version),
+      entities: z.array(
+        z.object(
+          Object.fromEntries(
+            this.components.map((component) => [
+              component.name,
+              component.schema.optional(),
+            ]),
+          ),
+        ),
+      ),
+    });
   }
 
-  *query<TEcsEntity extends TEntity>(
-    ecs: Ecs<EntityComponentSchemas<TEcsEntity>, TEcsEntity>,
-  ): Generator<TSelected> {
+  add(entity: Empty & Partial<TEntity & { [key: string]: unknown }>) {
+    this.entities.push(entity);
+  }
+
+  addAll(entities: Array<Partial<TEntity> & { [key: string]: unknown }>) {
+    this.entities.push(...entities);
+  }
+
+  toJSON() {
+    return { version: packageJson.version, entities: this.entities };
+  }
+
+  loadJSON(json: unknown) {
+    const entities = this.serializationSchema().parse(json).entities;
+    this.entities = entities as Array<TEntity>;
+  }
+}
+
+export function ecs<const TComponents extends ComponentArrayLike>(
+  components: TComponents,
+): ECS<ComponentsEntity<TComponents>> {
+  return new ECS(
+    components as Array<EntityComponent<ComponentsEntity<TComponents>>>,
+  );
+}
+
+export class Query<TInput extends EntityLike, TOutput extends TInput> {
+  filter: (entity: Partial<TInput>) => entity is TOutput;
+
+  constructor(filter: (entity: Partial<TInput>) => entity is TOutput) {
+    this.filter = filter;
+  }
+
+  has<TName extends string, TZodSchema extends ZodTypeAny>(
+    component: Component<TName, TZodSchema>,
+  ): Query<
+    TInput & { [key in TName]: z.infer<TZodSchema> },
+    TOutput & { [key in TName]: z.infer<TZodSchema> }
+  > {
+    return new Query(
+      (
+        entity: Partial<TInput>,
+      ): entity is TOutput & { [key in TName]: z.infer<TZodSchema> } =>
+        this.filter(entity) && component.name in entity,
+    );
+  }
+
+  where(filter: (entity: TOutput) => boolean): Query<TInput, TOutput>;
+  where<TNewOutput extends TOutput>(
+    filter: (entity: TOutput) => entity is TNewOutput,
+  ): Query<TInput, TNewOutput> {
+    return new Query(
+      (entity: Partial<TInput>) => this.filter(entity) && filter(entity),
+    );
+  }
+
+  *query<TEntity extends TInput>(ecs: ECS<TEntity>): Generator<TOutput> {
     for (const entity of ecs.entities) {
-      if (this.filterFn(entity)) {
+      if (this.filter(entity)) {
         yield entity;
       }
     }
   }
-
-  where(
-    predicate: (entity: TSelected) => boolean,
-  ): EcsQuery<TEntity, TSelected> {
-    return new EcsQuery(
-      (entity): entity is TSelected =>
-        this.filterFn(entity) && predicate(entity),
-    );
-  }
-
-  hasComponent<
-    TComponentKey extends string,
-    TComponentSchema extends ComponentSchema,
-  >(
-    key: TComponentKey,
-    _schema: TComponentSchema,
-  ): EcsQuery<
-    AddComponent<TEntity, TComponentKey, z.infer<TComponentSchema>>,
-    AddComponent<TSelected, TComponentKey, z.infer<TComponentSchema>>
-  > {
-    return new EcsQuery(
-      (
-        entity,
-      ): entity is AddComponent<TSelected, TComponentKey, TComponentSchema> =>
-        this.filterFn(entity) && key in entity,
-    );
-  }
 }
 
-export class EcsSchema<TComponentSchemas extends ComponentSchemas> {
-  schemas: TComponentSchemas;
-
-  private constructor(args: { schemas: TComponentSchemas }) {
-    this.schemas = args.schemas;
-  }
-
-  static create() {
-    return new EcsSchema<Empty>({ schemas: {} });
-  }
-
-  component<
-    const TComponentKey extends string,
-    TComponentSchema extends ComponentSchema,
-  >(
-    key: TComponentKey,
-    componentSchema: TComponentSchema,
-  ): EcsSchema<
-    AddComponent<TComponentSchemas, TComponentKey, TComponentSchema>
-  > {
-    // TODO: any way to avoid the cast?
-    const newSchemas = {
-      ...this.schemas,
-      [key]: componentSchema,
-    } as AddComponent<TComponentSchemas, TComponentKey, TComponentSchema>;
-    return new EcsSchema({ schemas: newSchemas });
-  }
+export function query(): Query<Empty, Empty> {
+  return new Query((_entity): _entity is Empty => true);
 }
 
-export class Ecs<
-  TComponentSchemas extends ComponentSchemas,
-  TEntity extends
-    InferEntityType<TComponentSchemas> = InferEntityType<TComponentSchemas>,
-> {
-  schema: EcsSchema<TComponentSchemas>;
-  entities: Partial<TEntity>[];
-
-  private constructor(args: {
-    schema: EcsSchema<TComponentSchemas>;
-    entities: Partial<TEntity>[];
-  }) {
-    this.schema = args.schema;
-    this.entities = args.entities;
-  }
-
-  static fromEmpty<TComponentSchemas extends ComponentSchemas>(
-    schema: EcsSchema<TComponentSchemas>,
-  ): Ecs<TComponentSchemas> {
-    return new Ecs({ schema, entities: [] });
-  }
-
-  static from<
-    TComponentSchemas extends ComponentSchemas,
-    TEntity extends
-      InferEntityType<TComponentSchemas> = InferEntityType<TComponentSchemas>,
-  >(args: {
-    schema: EcsSchema<TComponentSchemas>;
-    entities: Partial<NoInfer<TEntity> & { [key: string]: unknown }>[];
-  }): Ecs<TComponentSchemas, TEntity> {
-    return new Ecs(args);
-  }
-
-  static deserialize<TComponentSchemas extends ComponentSchemas>({
-    schema,
-    data,
-  }: {
-    schema: EcsSchema<TComponentSchemas>;
-    data: unknown;
-  }): Ecs<TComponentSchemas> {
-    const dataSchema = z.object({
-      zecs: z.literal(packageJson.version),
-      entities: z.array(z.object(schema.schemas).partial()),
-    });
-    return new Ecs<TComponentSchemas>({
-      schema,
-      entities: dataSchema.parse(data).entities,
-    });
-  }
-
-  serialize(): Readonly<unknown> {
-    return { zecs: packageJson.version, entities: this.entities };
-  }
-
-  filter(query: EcsQuery<TEntity, TEntity>): void {
-    this.entities = [
-      ...query.query(this as Ecs<EntityComponentSchemas<TEntity>, TEntity>),
-    ];
-  }
-}
+const zecs = { component, ecs, query };
+export default zecs;

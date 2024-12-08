@@ -5,6 +5,7 @@
     "moduleResolution": "Bundler",
 
     "esModuleInterop": true,
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    "strict": true
   }
 }
