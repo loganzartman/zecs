@@ -1,7 +1,7 @@
 import z from 'zod';
 import type { ZodType } from 'zod';
-import packageJson from '../package.json';
 import type { ZodTypeAny } from 'zod';
+import packageJson from '../package.json';
 
 type Expand<T> = T extends any ? { [K in keyof T]: T[K] } : never;
 
@@ -22,9 +22,9 @@ export type ComponentsEntity<TComponents extends ComponentArrayLike> = Expand<{
   >;
 }>;
 
-export type EntityComponent<TEntity extends EntityLike> = {
+export type EntityComponents<TEntity extends EntityLike> = {
   [Key in keyof TEntity]: Component<Key & string, ZodType<TEntity[Key]>>;
-}[keyof TEntity];
+};
 
 export type ECSWith<TQuery extends Query<EntityLike, EntityLike>> =
   TQuery extends Query<infer TInput, any> ? ECS<Expand<TInput>> : never;
@@ -37,10 +37,10 @@ export function component<
 }
 
 export class ECS<TEntity extends EntityLike> {
-  components: Array<EntityComponent<TEntity>>;
+  components: Readonly<EntityComponents<TEntity>>;
   entities: Array<Partial<TEntity>>;
 
-  constructor(components: Array<EntityComponent<TEntity>>) {
+  constructor(components: EntityComponents<TEntity>) {
     this.components = components;
     this.entities = [];
   }
@@ -51,9 +51,9 @@ export class ECS<TEntity extends EntityLike> {
       entities: z.array(
         z.object(
           Object.fromEntries(
-            this.components.map((component) => [
-              component.name,
-              component.schema.optional(),
+            Object.entries(this.components).map(([key, value]) => [
+              key,
+              value.schema.optional(),
             ]),
           ),
         ),
@@ -83,7 +83,9 @@ export function ecs<const TComponents extends ComponentArrayLike>(
   components: TComponents,
 ): ECS<ComponentsEntity<TComponents>> {
   return new ECS(
-    components as Array<EntityComponent<ComponentsEntity<TComponents>>>,
+    Object.fromEntries(
+      components.map((component) => [component.name, component]),
+    ) as EntityComponents<ComponentsEntity<TComponents>>,
   );
 }
 

@@ -1,5 +1,5 @@
 import z from 'zod';
-import { component, query, ecs, type ECSWith } from '.';
+import { type ECSWith, component, ecs, query } from '.';
 
 describe('zecs', () => {
   it('works end-to-end', () => {
@@ -55,26 +55,35 @@ describe('zecs', () => {
 
   it('rejects entities with components not matching schema', () => {
     const health = component('health', z.number());
+    const position = component(
+      'position',
+      z.object({ x: z.number(), y: z.number() }),
+    );
 
-    const healthfulEntity1 = {
+    const entity1 = {
       position: { x: 0, y: 0 },
       health: 1,
     };
 
-    const healthfulEntity2 = {
-      health: 1,
-    };
-
-    const unhealthfulEntity = {
+    const entity2 = {
       position: { x: 0, y: 0 },
     };
 
-    const e = ecs([health]);
+    const entity3 = {
+      someOther: 'component',
+    };
 
-    e.add(healthfulEntity1);
-    e.add(healthfulEntity2);
-    // @ts-expect-error missing health component
-    e.add(unhealthfulEntity);
+    const incompatibleEntity = {
+      position: 'second',
+    };
+
+    const e = ecs([health, position]);
+
+    e.add(entity1);
+    e.add(entity2);
+    e.add(entity3);
+    // @ts-expect-error
+    e.add(incompatibleEntity);
   });
 
   describe('has() queries', () => {
