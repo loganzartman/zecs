@@ -1,6 +1,6 @@
 {
   "name": "zecs",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "strongly-typed entity-component-system implementation for hobby use",
   "source": "src/index.ts",
   "main": "dist/index.js",
