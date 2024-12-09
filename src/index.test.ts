@@ -188,7 +188,7 @@ describe('zecs', () => {
     });
   });
 
-  describe('getOnly()', () => {
+  describe('queryOnly()', () => {
     it('returns the matching entity', () => {
       const health = component('health', z.number());
       const healthful = query().has(health);
@@ -200,7 +200,7 @@ describe('zecs', () => {
       const e = ecs([health]);
       e.add(healthfulEntity);
 
-      const entity = healthful.getOnly(e);
+      const entity = healthful.queryOnly(e);
 
       expect(entity).toEqual(healthfulEntity);
     });
@@ -211,7 +211,7 @@ describe('zecs', () => {
 
       const e = ecs([health]);
 
-      expect(() => healthful.getOnly(e)).toThrow();
+      expect(() => healthful.queryOnly(e)).toThrow();
     });
 
     it('throws if more than one entity matches', () => {
@@ -229,7 +229,7 @@ describe('zecs', () => {
       const e = ecs([health]);
       e.addAll([healthfulEntity1, healthfulEntity2]);
 
-      expect(() => healthful.getOnly(e)).toThrow();
+      expect(() => healthful.queryOnly(e)).toThrow();
     });
   });
 

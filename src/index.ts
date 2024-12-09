@@ -127,7 +127,7 @@ export class Query<TInput extends EntityLike, TOutput extends TInput> {
     }
   }
 
-  getOnly<TEntity extends TInput>(ecs: ECS<TEntity>): TOutput {
+  queryOnly<TEntity extends TInput>(ecs: ECS<TEntity>): TOutput {
     let result: TOutput | null = null;
     for (const entity of ecs.entities) {
       if (this.filter(entity)) {
