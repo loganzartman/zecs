@@ -47,7 +47,7 @@ export class ECS<TEntity extends EntityLike> {
 
   serializationSchema() {
     return z.object({
-      version: z.literal(packageJson.version),
+      $zecs: z.literal(packageJson.version),
       entities: z.array(
         z.object(
           Object.fromEntries(
@@ -70,7 +70,7 @@ export class ECS<TEntity extends EntityLike> {
   }
 
   toJSON() {
-    return { version: packageJson.version, entities: this.entities };
+    return { $zecs: packageJson.version, entities: this.entities };
   }
 
   loadJSON(json: unknown) {
