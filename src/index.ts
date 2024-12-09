@@ -126,6 +126,22 @@ export class Query<TInput extends EntityLike, TOutput extends TInput> {
       }
     }
   }
+
+  getOnly<TEntity extends TInput>(ecs: ECS<TEntity>): TOutput {
+    let result: TOutput | null = null;
+    for (const entity of ecs.entities) {
+      if (this.filter(entity)) {
+        if (result !== null) {
+          throw new Error('More than one entity matches');
+        }
+        result = entity;
+      }
+    }
+    if (result === null) {
+      throw new Error('No entity matches');
+    }
+    return result;
+  }
 }
 
 export function query(): Query<Empty, Empty> {

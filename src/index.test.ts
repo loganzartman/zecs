@@ -188,6 +188,51 @@ describe('zecs', () => {
     });
   });
 
+  describe('getOnly()', () => {
+    it('returns the matching entity', () => {
+      const health = component('health', z.number());
+      const healthful = query().has(health);
+
+      const healthfulEntity = {
+        health: 1,
+      };
+
+      const e = ecs([health]);
+      e.add(healthfulEntity);
+
+      const entity = healthful.getOnly(e);
+
+      expect(entity).toEqual(healthfulEntity);
+    });
+
+    it('throws if no entity matches', () => {
+      const health = component('health', z.number());
+      const healthful = query().has(health);
+
+      const e = ecs([health]);
+
+      expect(() => healthful.getOnly(e)).toThrow();
+    });
+
+    it('throws if more than one entity matches', () => {
+      const health = component('health', z.number());
+      const healthful = query().has(health);
+
+      const healthfulEntity1 = {
+        health: 1,
+      };
+
+      const healthfulEntity2 = {
+        health: 1,
+      };
+
+      const e = ecs([health]);
+      e.addAll([healthfulEntity1, healthfulEntity2]);
+
+      expect(() => healthful.getOnly(e)).toThrow();
+    });
+  });
+
   describe('serialization', () => {
     it('can serialize and deserialize an ecs', () => {
       const health = component('health', z.number());
