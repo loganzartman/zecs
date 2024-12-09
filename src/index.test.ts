@@ -1,5 +1,5 @@
 import z from 'zod';
-import { type ECSWith, component, ecs, query } from '.';
+import { type ECSWith, type Empty, component, ecs, query } from '.';
 
 describe('zecs', () => {
   it('works end-to-end', () => {
@@ -230,6 +230,51 @@ describe('zecs', () => {
       e.addAll([healthfulEntity1, healthfulEntity2]);
 
       expect(() => healthful.queryOnly(e)).toThrow();
+    });
+  });
+
+  describe('match()', () => {
+    it('returns true if the entity matches the query', () => {
+      const health = component('health', z.number());
+      const position = component(
+        'position',
+        z.object({ x: z.number(), y: z.number() }),
+      );
+      const healthful = query().has(health);
+
+      const entity = {
+        health: 1,
+        position: { x: 0, y: 0 },
+      };
+
+      expect(healthful.match(entity)).toBe(true);
+    });
+
+    it('returns false if the entity does not match the query', () => {
+      const health = component('health', z.number());
+      const healthful = query().has(health);
+
+      const entity = {
+        position: { x: 0, y: 0 },
+      };
+
+      expect(healthful.match(entity)).toBe(false);
+    });
+
+    it('refines the type of the entity', () => {
+      const health = component('health', z.number());
+      const healthful = query().has(health);
+
+      const entity = {
+        health: 1,
+      };
+
+      function doSomething(e: Empty) {
+        if (healthful.match(e)) {
+          e.health;
+        }
+      }
+      doSomething(entity);
     });
   });
 

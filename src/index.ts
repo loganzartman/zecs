@@ -142,6 +142,12 @@ export class Query<TInput extends EntityLike, TOutput extends TInput> {
     }
     return result;
   }
+
+  match<TEntity extends Partial<TInput> & Empty>(
+    entity: TEntity,
+  ): entity is TEntity & TOutput {
+    return this.filter(entity);
+  }
 }
 
 export function query(): Query<Empty, Empty> {
