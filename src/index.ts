@@ -2,6 +2,7 @@ import z from 'zod';
 import type { ZodType } from 'zod';
 import type { ZodTypeAny } from 'zod';
 import packageJson from '../package.json';
+import { deserializeRefs, entitySymbol, serializeRefs } from './serialization';
 
 type Expand<T> = T extends any ? { [K in keyof T]: T[K] } : never;
 
@@ -37,24 +38,27 @@ export function component<
 }
 
 export class ECS<TEntity extends EntityLike> {
+  #id = 1;
   components: Readonly<EntityComponents<TEntity>>;
-  entities: Array<Partial<TEntity>>;
+  entities: Record<string, Partial<TEntity>>;
 
   constructor(components: EntityComponents<TEntity>) {
     this.components = components;
-    this.entities = [];
+    this.entities = {};
   }
 
   serializationSchema() {
     return z.object({
-      $zecs: z.literal(packageJson.version),
-      entities: z.array(
+      zecs: z.literal(packageJson.version),
+      entities: z.record(
+        z.string(),
         z.object(
           Object.fromEntries(
-            Object.entries(this.components).map(([key, value]) => [
-              key,
-              value.schema.optional(),
-            ]),
+            (
+              Object.entries(this.components) as Array<
+                [keyof TEntity, EntityComponents<TEntity>[keyof TEntity]]
+              >
+            ).map(([key, value]) => [key, value.schema.optional()]),
           ),
         ),
       ),
@@ -62,20 +66,40 @@ export class ECS<TEntity extends EntityLike> {
   }
 
   add(entity: Empty & Partial<TEntity & { [key: string]: unknown }>) {
-    this.entities.push(entity);
+    const id = (this.#id++).toString();
+    Object.defineProperty(entity, entitySymbol, { value: id });
+    this.entities[id] = entity;
   }
 
   addAll(entities: Array<Partial<TEntity> & { [key: string]: unknown }>) {
-    this.entities.push(...entities);
+    for (const entity of entities) {
+      this.add(entity);
+    }
+  }
+
+  get(id: string): Partial<TEntity> | undefined {
+    return this.entities[id];
+  }
+
+  *getAll(): Generator<Partial<TEntity>> {
+    for (const id in this.entities) {
+      yield this.entities[id];
+    }
   }
 
   toJSON() {
-    return { $zecs: packageJson.version, entities: this.entities };
+    return {
+      zecs: packageJson.version,
+      entities: serializeRefs(this.entities, 2),
+    };
   }
 
   loadJSON(json: unknown) {
     const entities = this.serializationSchema().parse(json).entities;
-    this.entities = entities as Array<TEntity>;
+    this.entities = deserializeRefs(entities, entities) as Record<
+      string,
+      Partial<TEntity>
+    >;
   }
 }
 
@@ -120,7 +144,8 @@ export class Query<TInput extends EntityLike, TOutput extends TInput> {
   }
 
   *query<TEntity extends TInput>(ecs: ECS<TEntity>): Generator<TOutput> {
-    for (const entity of ecs.entities) {
+    for (const id in ecs.entities) {
+      const entity = ecs.entities[id];
       if (this.filter(entity)) {
         yield entity;
       }
@@ -129,7 +154,8 @@ export class Query<TInput extends EntityLike, TOutput extends TInput> {
 
   queryOnly<TEntity extends TInput>(ecs: ECS<TEntity>): TOutput {
     let result: TOutput | null = null;
-    for (const entity of ecs.entities) {
+    for (const id in ecs.entities) {
+      const entity = ecs.entities[id];
       if (this.filter(entity)) {
         if (result !== null) {
           throw new Error('More than one entity matches');

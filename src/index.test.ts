@@ -304,12 +304,38 @@ describe('zecs', () => {
       const e = ecs([health, position, velocity]);
       e.addAll([healthfulEntity, movableEntity]);
 
-      const originalEntities = [...e.entities];
+      const originalEntities = [...e.getAll()];
       const serialized = JSON.stringify(e.toJSON());
 
       e.loadJSON(JSON.parse(serialized));
-      const deserializedEntities = [...e.entities];
+      const deserializedEntities = [...e.getAll()];
 
+      expect(deserializedEntities).toEqual(originalEntities);
+    });
+
+    it('can serialize and deserialize an ecs with entity references', () => {
+      const x = component('x', z.number());
+      const ref = component('ref', z.unknown());
+      const e1 = {
+        x: 1,
+      };
+      const e2 = {
+        x: 2,
+        ref: e1,
+      };
+      const e3 = {
+        x: 3,
+        ref: e2,
+      };
+
+      const e = ecs([x, ref]);
+      e.addAll([e1, e2, e3]);
+
+      const originalEntities = [...e.getAll()];
+      const serialized = JSON.stringify(e.toJSON());
+
+      e.loadJSON(JSON.parse(serialized));
+      const deserializedEntities = [...e.getAll()];
       expect(deserializedEntities).toEqual(originalEntities);
     });
   });
