@@ -33,6 +33,12 @@ export type EntityComponents<TEntity extends EntityLike> = {
 export type ECSWith<TQuery extends Query<EntityLike, EntityLike>> =
   TQuery extends Query<infer TInput, any> ? ECS<Expand<TInput>> : never;
 
+export type QueryInput<TQuery extends Query<EntityLike, EntityLike>> =
+  TQuery extends Query<infer TInput, any> ? TInput : never;
+
+export type QueryOutput<TQuery extends Query<EntityLike, EntityLike>> =
+  TQuery extends Query<any, infer TOutput> ? TOutput : never;
+
 export function component<
   TName extends string,
   const TZodSchema extends ZodTypeAny,
