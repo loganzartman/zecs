@@ -3,6 +3,7 @@ import type { ZodType } from 'zod';
 import type { ZodTypeAny } from 'zod';
 import packageJson from '../package.json';
 import { deserializeRefs, entitySymbol, serializeRefs } from './serialization';
+import { entries, fromEntries } from './util';
 
 type Expand<T> = T extends any ? { [K in keyof T]: T[K] } : never;
 
@@ -24,7 +25,9 @@ export type ComponentsEntity<TComponents extends ComponentArrayLike> = Expand<{
 }>;
 
 export type EntityComponents<TEntity extends EntityLike> = {
-  [Key in keyof TEntity]: Component<Key & string, ZodType<TEntity[Key]>>;
+  [Key in keyof TEntity]: Key extends string
+    ? Component<Key, ZodType<TEntity[Key]>>
+    : never;
 };
 
 export type ECSWith<TQuery extends Query<EntityLike, EntityLike>> =
@@ -47,21 +50,21 @@ export class ECS<TEntity extends EntityLike> {
     this.entities = {};
   }
 
-  serializationSchema() {
+  #entitySchema() {
+    return z.object(
+      fromEntries(
+        entries(this.components).map(([name, component]) => [
+          name,
+          component.schema.optional(),
+        ]),
+      ),
+    );
+  }
+
+  #serializationSchema() {
     return z.object({
       zecs: z.literal(packageJson.version),
-      entities: z.record(
-        z.string(),
-        z.object(
-          Object.fromEntries(
-            (
-              Object.entries(this.components) as Array<
-                [keyof TEntity, EntityComponents<TEntity>[keyof TEntity]]
-              >
-            ).map(([key, value]) => [key, value.schema.optional()]),
-          ),
-        ),
-      ),
+      entities: z.record(z.string(), this.#entitySchema()),
     });
   }
 
@@ -95,7 +98,7 @@ export class ECS<TEntity extends EntityLike> {
   }
 
   loadJSON(json: unknown) {
-    const entities = this.serializationSchema().parse(json).entities;
+    const entities = this.#serializationSchema().parse(json).entities;
     this.entities = deserializeRefs(entities, entities) as Record<
       string,
       Partial<TEntity>
