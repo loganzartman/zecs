@@ -1,4 +1,5 @@
-import type { ECS, EntityLike, Query } from '.';
+import type { ECS, EntityLike } from './ecs';
+import type { Query } from './query';
 
 export type KeyLookup<TEntity extends EntityLike, TOutput extends TEntity> = {
   update(): void;

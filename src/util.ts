@@ -1,3 +1,7 @@
+export type Expand<T> = T extends any ? { [K in keyof T]: T[K] } : never;
+
+export type Empty = Record<never, never>;
+
 export type Entries<TObject extends Record<PropertyKey, unknown>> = {
   [K in keyof TObject]: [K, TObject[K]];
 }[keyof TObject][];
