@@ -4,5 +4,4 @@ strongly-typed entity-component-system implementation for hobby use
 
 ## usage example
 
-https://github.com/loganzartman/zecs/blob/v0.3.0/src/index.test.ts#L5-L54
-
+https://github.com/loganzartman/zecs/blob/2eca8891edbac3e591cd8d14b11c43b12901c0a0/src/index.test.ts#L8-L57
