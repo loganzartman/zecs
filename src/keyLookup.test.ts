@@ -33,7 +33,7 @@ describe('keyLookup', () => {
       entity.health.toString();
     const lookup = keyLookup(e, healthful, keyFn);
 
-    expect(lookup.getBy({ health: 0 })).toEqual(new Set([deadEntity]));
+    expect(lookup.get({ health: 0 })).toEqual(new Set([deadEntity]));
   });
 
   it('can do a spatial hash', () => {
@@ -77,7 +77,48 @@ describe('keyLookup', () => {
     expect(keyFn(entities[3])).toBe('[1,0]');
     expect(keyFn(entities[4])).toBe('[2,1]');
 
-    expect(lookup.get('[1,0]')).toEqual(new Set([entities[1], entities[3]]));
-    expect(lookup.get('[2,1]')).toEqual(new Set([entities[4]]));
+    expect(lookup.get(entities[1])).toEqual(
+      new Set([entities[1], entities[3]]),
+    );
+    expect(lookup.get(entities[4])).toEqual(new Set([entities[4]]));
+  });
+
+  it('can do collision acceleration', () => {
+    const position = component(
+      'position',
+      z.object({ x: z.number(), y: z.number() }),
+    );
+    const radius = component('radius', z.number());
+
+    const entities = [
+      { position: { x: 4, y: 4 }, radius: 2 },
+      { position: { x: 6, y: 4 }, radius: 1 },
+      { position: { x: 8, y: 8 }, radius: 1 },
+    ];
+
+    const e = ecs([position, radius]);
+    e.addAll(entities);
+
+    const collidable = query().has(position).has(radius);
+
+    const keyFn = (entity: QueryOutput<typeof collidable>) => {
+      const keys = [];
+      const d0 = Math.floor(-entity.radius);
+      const d1 = Math.ceil(entity.radius);
+      for (let dx = d0; dx <= d1; dx++) {
+        for (let dy = d0; dy <= d1; dy++) {
+          const x = Math.floor(entity.position.x + dx);
+          const y = Math.floor(entity.position.y + dy);
+          keys.push(`${x},${y}`);
+        }
+      }
+      return keys;
+    };
+
+    const lookup = keyLookup(e, collidable, keyFn);
+
+    expect(lookup.get(entities[0])).toEqual(
+      new Set([entities[0], entities[1]]),
+    );
   });
 });
