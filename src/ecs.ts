@@ -64,6 +64,14 @@ export class ECS<TEntity extends EntityLike> {
     }
   }
 
+  remove(id: string) {
+    delete this.entities[id];
+  }
+
+  removeAll() {
+    this.entities = {};
+  }
+
   get(id: string): Partial<TEntity> | undefined {
     return this.entities[id];
   }
