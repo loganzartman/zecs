@@ -52,6 +52,10 @@ export class ECS<TEntity extends EntityLike> {
     });
   }
 
+  entity(data: Partial<TEntity>): Partial<TEntity> {
+    return data;
+  }
+
   add(entity: Empty & Partial<TEntity & { [key: string]: unknown }>) {
     const id = (this.#id++).toString();
     Object.defineProperty(entity, entitySymbol, { value: id });
