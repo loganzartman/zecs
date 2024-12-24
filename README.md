@@ -1,6 +1,6 @@
 # zecs
 
-strongly-typed entity-component-system implementation for hobby use
+strongly-typed, unopinionated, fast-enough **entity-component-system** system for hobby use
 
 ## usage example
 
