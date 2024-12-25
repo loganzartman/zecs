@@ -24,6 +24,12 @@ export type EntityComponents<TEntity extends EntityLike> = {
 export type ECSWith<TQuery extends Query<EntityLike, EntityLike>> =
   TQuery extends Query<infer TInput, any> ? ECS<Expand<TInput>> : never;
 
+export type ECSEntity<TECS extends ECS<EntityLike>> = TECS extends ECS<
+  infer TEntity
+>
+  ? TEntity
+  : never;
+
 export class ECS<TEntity extends EntityLike> {
   #id = 1;
   components: Readonly<EntityComponents<TEntity>>;
