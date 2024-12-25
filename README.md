@@ -12,7 +12,7 @@ we've got the basics:
 
 * `entity`: plain typescript object; each top level field is a component
 * `component`: a name/key and a zod schema 
-* `ecs`: a bunch of entities that can have 
+* `ecs`: a set of possible components and a collection of entities 
 * `query`: selects entities with a specific shape
   * use this to build "systems"
 
