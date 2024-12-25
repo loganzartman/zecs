@@ -2,6 +2,8 @@
 
 strongly-typed, unopinionated, fast-enough **entity-component-system** system for hobby use
 
+tightly integrated with [zod](https://zod.dev/) for schemas
+
 `pnpm add zecs`
 
 `npm i --save zecs`
