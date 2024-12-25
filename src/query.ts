@@ -65,6 +65,15 @@ export class Query<TInput extends EntityLike, TOutput extends TInput> {
     return result;
   }
 
+  intersect<TNewInput extends EntityLike, TNewOutput extends TNewInput>(
+    query: Query<TNewInput, TNewOutput>,
+  ): Query<TInput & TNewInput, TOutput & TNewOutput> {
+    return new Query(
+      (entity: Partial<TInput & TNewInput>): entity is TOutput & TNewOutput =>
+        this.filter(entity) && query.filter(entity),
+    );
+  }
+
   match<TEntity extends Partial<TInput> & Empty>(
     entity: TEntity,
   ): entity is TEntity & TOutput {
