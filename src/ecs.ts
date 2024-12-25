@@ -34,6 +34,7 @@ export class ECS<TEntity extends EntityLike> {
   #id = 1;
   components: Readonly<EntityComponents<TEntity>>;
   entities: Record<string, Partial<TEntity>>;
+  aliases: Record<string, string> = {};
 
   constructor(components: EntityComponents<TEntity>) {
     this.components = components;
@@ -55,6 +56,7 @@ export class ECS<TEntity extends EntityLike> {
     return z.object({
       zecs: z.literal(packageJson.version),
       entities: z.record(z.string(), this.#entitySchema()),
+      aliases: z.record(z.string(), z.string()),
     });
   }
 
@@ -62,28 +64,32 @@ export class ECS<TEntity extends EntityLike> {
     return data;
   }
 
-  add(entity: Empty & Partial<TEntity & { [key: string]: unknown }>) {
+  add(entity: Empty & Partial<TEntity & { [key: string]: unknown }>): string {
     const id = (this.#id++).toString();
     Object.defineProperty(entity, entitySymbol, { value: id });
     this.entities[id] = entity;
+    return id;
   }
 
-  addAll(entities: Array<Partial<TEntity> & { [key: string]: unknown }>) {
+  addAll(entities: Array<Partial<TEntity> & { [key: string]: unknown }>): void {
     for (const entity of entities) {
       this.add(entity);
     }
   }
 
-  remove(id: string) {
+  remove(id: string): void {
     delete this.entities[id];
   }
 
-  removeAll() {
+  removeAll(): void {
     this.entities = {};
   }
 
-  get(id: string): Partial<TEntity> | undefined {
-    return this.entities[id];
+  get(idOrAlias: string): Partial<TEntity> | undefined {
+    if (idOrAlias in this.aliases) {
+      return this.entities[this.aliases[idOrAlias]];
+    }
+    return this.entities[idOrAlias];
   }
 
   *getAll(): Generator<Partial<TEntity>> {
@@ -92,19 +98,40 @@ export class ECS<TEntity extends EntityLike> {
     }
   }
 
+  alias(alias: string, id: string): void {
+    this.aliases[alias] = id;
+  }
+
+  singleton<T extends TEntity>(
+    alias: string,
+    query: Query<TEntity, T>,
+    entityFactory: () => T,
+  ): T {
+    const existing = this.get(alias);
+    if (existing && query.match(existing)) {
+      return existing;
+    }
+    const entity = entityFactory();
+    const id = this.add(entity);
+    this.alias(alias, id);
+    return entity;
+  }
+
   toJSON() {
     return {
       zecs: packageJson.version,
       entities: serializeRefs(this.entities, 2),
+      aliases: this.aliases,
     };
   }
 
   loadJSON(json: unknown) {
-    const entities = this.#serializationSchema().parse(json).entities;
+    const { entities, aliases } = this.#serializationSchema().parse(json);
     this.entities = deserializeRefs(entities, entities) as Record<
       string,
       Partial<TEntity>
     >;
+    this.aliases = aliases;
   }
 }
 
