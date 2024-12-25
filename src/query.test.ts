@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { component } from './component';
+import { type ECSWith, ecs } from './ecs';
 import { query } from './query';
-import { ecs, type ECSWith } from './ecs';
 
 describe('query', () => {
   it('intersects queries', () => {
