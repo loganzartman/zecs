@@ -27,4 +27,5 @@ and for a limited time only:
 * `toJSON` and `fromJSON`: turn an `ecs` to and from a plain object
 * `alias` for assigning a key to a specific entity
 * `singleton` for storing a unique object (and maybe serializing it)
+* `event`: tiny, strongly-typed event emitter
 * airtight, intuitive types
