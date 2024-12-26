@@ -60,11 +60,11 @@ describe('ecs', () => {
       const rectangular = query().has(rectangle);
       const myEcs = ecs([rectangle]);
 
-      const view = myEcs.singleton('viewKey', rectangular, () => ({
+      const getView = myEcs.singleton('viewKey', rectangular, () => ({
         rectangle: { x: 1, y: 2, w: 3, h: 4 },
       }));
 
-      expect(view).toEqual({ rectangle: { x: 1, y: 2, w: 3, h: 4 } });
+      expect(getView()).toEqual({ rectangle: { x: 1, y: 2, w: 3, h: 4 } });
     });
 
     it("doesn't replace existing singletons", () => {
@@ -80,17 +80,17 @@ describe('ecs', () => {
       const rectangular = query().has(rectangle);
       const myEcs = ecs([rectangle]);
 
-      const view1 = myEcs.singleton('viewKey', rectangular, () => ({
+      const getView1 = myEcs.singleton('viewKey', rectangular, () => ({
         rectangle: { x: 1, y: 2, w: 3, h: 4 },
       }));
 
-      expect(view1).toEqual({ rectangle: { x: 1, y: 2, w: 3, h: 4 } });
+      expect(getView1()).toEqual({ rectangle: { x: 1, y: 2, w: 3, h: 4 } });
 
-      const view2 = myEcs.singleton('viewKey', rectangular, () => ({
+      const getView2 = myEcs.singleton('viewKey', rectangular, () => ({
         rectangle: { x: 5, y: 6, w: 7, h: 8 },
       }));
 
-      expect(view2).toEqual({ rectangle: { x: 1, y: 2, w: 3, h: 4 } });
+      expect(getView2()).toEqual({ rectangle: { x: 1, y: 2, w: 3, h: 4 } });
     });
   });
 });

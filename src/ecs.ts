@@ -1,7 +1,7 @@
 import { type ZodType, type ZodTypeAny, z } from 'zod';
 import packageJson from '../package.json';
 import type { Component } from './component';
-import type { Query } from './query';
+import type { Query, QueryOutput } from './query';
 import { deserializeRefs, entitySymbol, serializeRefs } from './serialization';
 import { type Empty, type Expand, entries, fromEntries } from './util';
 
@@ -102,19 +102,21 @@ export class ECS<TEntity extends EntityLike> {
     this.aliases[alias] = id;
   }
 
-  singleton<T extends TEntity>(
+  singleton<T extends Partial<TEntity>>(
     alias: string,
-    query: Query<TEntity, T>,
+    query: Query<Partial<TEntity>, T>,
     entityFactory: () => T,
-  ): T {
-    const existing = this.get(alias);
-    if (existing && query.match(existing)) {
-      return existing;
-    }
-    const entity = entityFactory();
-    const id = this.add(entity);
-    this.alias(alias, id);
-    return entity;
+  ): () => T {
+    return () => {
+      const existing = this.get(alias);
+      if (existing && query.match(existing)) {
+        return existing;
+      }
+      const entity = entityFactory();
+      const id = this.add(entity);
+      this.alias(alias, id);
+      return entity;
+    };
   }
 
   toJSON() {
