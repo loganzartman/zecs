@@ -4,6 +4,7 @@ import type { Component } from './component';
 import type { Query, QueryOutput } from './query';
 import { deserializeRefs, entitySymbol, serializeRefs } from './serialization';
 import { type Empty, type Expand, entries, fromEntries } from './util';
+import { uuid } from './uuid';
 
 export type EntityLike = Record<string, unknown>;
 
@@ -31,7 +32,6 @@ export type ECSEntity<TECS extends ECS<EntityLike>> = TECS extends ECS<
   : never;
 
 export class ECS<TEntity extends EntityLike> {
-  #id = 1;
   #entityAliases: Map<string, Set<string>> = new Map();
   components: Readonly<EntityComponents<TEntity>>;
   entities: Record<string, Partial<TEntity>> = {};
@@ -65,7 +65,11 @@ export class ECS<TEntity extends EntityLike> {
   }
 
   add(entity: Empty & Partial<TEntity & { [key: string]: unknown }>): string {
-    const id = (this.#id++).toString();
+    let id: string;
+    do {
+      id = uuid();
+    } while (id in this.entities);
+
     Object.defineProperty(entity, entitySymbol, { value: id });
     this.entities[id] = entity;
     return id;
