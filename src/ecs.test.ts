@@ -20,6 +20,59 @@ describe('ecs', () => {
       myEcs.alias('entity', entityId);
       expect(myEcs.get('entity')).toEqual(entity);
     });
+
+    it('removes aliases when clearing all entities', () => {
+      const health = component('health', z.number());
+      const myEcs = ecs([health]);
+      const entity = myEcs.entity({ health: 10 });
+      const entityId = myEcs.add(entity);
+
+      myEcs.alias('entity', entityId);
+      expect(myEcs.get('entity')).toEqual(entity);
+      expect(Object.keys(myEcs.aliases)).toHaveLength(1);
+
+      myEcs.removeAll();
+      expect(myEcs.get('entity')).toBeUndefined();
+      expect(Object.keys(myEcs.aliases)).toHaveLength(0);
+    });
+
+    it('removes alias when removing entity', () => {
+      const health = component('health', z.number());
+      const myEcs = ecs([health]);
+      const entity1 = myEcs.entity({ health: 10 });
+      const entity1Id = myEcs.add(entity1);
+      const entity2 = myEcs.entity({ health: 20 });
+      const entity2Id = myEcs.add(entity2);
+
+      myEcs.alias('entity1', entity1Id);
+      myEcs.alias('entity2', entity2Id);
+      expect(myEcs.get('entity1')).toEqual(entity1);
+      expect(myEcs.get('entity2')).toEqual(entity2);
+      expect(Object.keys(myEcs.aliases)).toHaveLength(2);
+
+      myEcs.remove(entity1Id);
+      expect(myEcs.get('entity1')).toBeUndefined();
+      expect(myEcs.get('entity2')).toEqual(entity2);
+      expect(Object.keys(myEcs.aliases)).toHaveLength(1);
+    });
+
+    it('removes all aliases to entity when removing entity', () => {
+      const health = component('health', z.number());
+      const myEcs = ecs([health]);
+      const entity = myEcs.entity({ health: 10 });
+      const entityId = myEcs.add(entity);
+
+      myEcs.alias('entity1', entityId);
+      myEcs.alias('entity2', entityId);
+      expect(myEcs.get('entity1')).toEqual(entity);
+      expect(myEcs.get('entity2')).toEqual(entity);
+      expect(Object.keys(myEcs.aliases)).toHaveLength(2);
+
+      myEcs.remove(entityId);
+      expect(myEcs.get('entity1')).toBeUndefined();
+      expect(myEcs.get('entity2')).toBeUndefined();
+      expect(Object.keys(myEcs.aliases)).toHaveLength(0);
+    });
   });
 
   describe('serialization', () => {

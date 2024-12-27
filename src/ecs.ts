@@ -32,13 +32,13 @@ export type ECSEntity<TECS extends ECS<EntityLike>> = TECS extends ECS<
 
 export class ECS<TEntity extends EntityLike> {
   #id = 1;
+  #entityAliases: Map<string, Set<string>> = new Map();
   components: Readonly<EntityComponents<TEntity>>;
-  entities: Record<string, Partial<TEntity>>;
+  entities: Record<string, Partial<TEntity>> = {};
   aliases: Record<string, string> = {};
 
   constructor(components: EntityComponents<TEntity>) {
     this.components = components;
-    this.entities = {};
   }
 
   #entitySchema() {
@@ -79,10 +79,16 @@ export class ECS<TEntity extends EntityLike> {
 
   remove(id: string): void {
     delete this.entities[id];
+    for (const alias of this.#entityAliases.get(id) ?? []) {
+      delete this.aliases[alias];
+    }
+    this.#entityAliases.delete(id);
   }
 
   removeAll(): void {
     this.entities = {};
+    this.aliases = {};
+    this.#entityAliases.clear();
   }
 
   get(idOrAlias: string): Partial<TEntity> | undefined {
@@ -99,6 +105,12 @@ export class ECS<TEntity extends EntityLike> {
   }
 
   alias(alias: string, id: string): void {
+    if (!(id in this.entities)) {
+      throw new Error(`Entity with id ${id} does not exist`);
+    }
+    const aliases = this.#entityAliases.get(id) ?? new Set();
+    aliases.add(alias);
+    this.#entityAliases.set(id, aliases);
     this.aliases[alias] = id;
   }
 
@@ -133,7 +145,9 @@ export class ECS<TEntity extends EntityLike> {
       string,
       Partial<TEntity>
     >;
-    this.aliases = aliases;
+    for (const [alias, id] of entries(aliases)) {
+      this.alias(alias, id);
+    }
   }
 }
 
