@@ -1,7 +1,7 @@
 import { type ZodType, type ZodTypeAny, z } from 'zod';
 import packageJson from '../package.json';
 import type { Component } from './component';
-import type { Query, QueryOutput } from './query';
+import type { Query } from './query';
 import { deserializeRefs, entitySymbol, serializeRefs } from './serialization';
 import { type Empty, type Expand, entries, fromEntries } from './util';
 import { uuid } from './uuid';
@@ -83,8 +83,11 @@ export class ECS<TEntity extends EntityLike> {
 
   remove(id: string): void {
     delete this.entities[id];
-    for (const alias of this.#entityAliases.get(id) ?? []) {
-      delete this.aliases[alias];
+    const aliases = this.#entityAliases.get(id);
+    if (aliases) {
+      for (const alias of aliases) {
+        delete this.aliases[alias];
+      }
     }
     this.#entityAliases.delete(id);
   }
@@ -159,7 +162,7 @@ export function ecs<const TComponents extends ComponentArrayLike>(
   components: TComponents,
 ): ECS<ComponentsEntity<TComponents>> {
   return new ECS(
-    Object.fromEntries(
+    fromEntries(
       components.map((component) => [component.name, component]),
     ) as EntityComponents<ComponentsEntity<TComponents>>,
   );

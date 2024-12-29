@@ -1,4 +1,4 @@
-import type { ZodTypeAny, z } from 'zod';
+import type { z } from 'zod';
 import type { Component } from './component';
 import type { ECS, EntityLike } from './ecs';
 import type { Empty } from './util';
@@ -16,17 +16,20 @@ export class Query<TInput extends EntityLike, TOutput extends TInput> {
     this.filter = filter;
   }
 
-  has<TName extends string, TZodSchema extends ZodTypeAny>(
-    component: Component<TName, TZodSchema>,
+  has<TComponents extends Component<any, any>[]>(
+    ...components: TComponents
   ): Query<
-    TInput & { [key in TName]: z.infer<TZodSchema> },
-    TOutput & { [key in TName]: z.infer<TZodSchema> }
+    TInput & { [E in TComponents[number] as E['name']]: z.infer<E['schema']> },
+    TOutput & { [E in TComponents[number] as E['name']]: z.infer<E['schema']> }
   > {
     return new Query(
       (
         entity: Partial<TInput>,
-      ): entity is TOutput & { [key in TName]: z.infer<TZodSchema> } =>
-        this.filter(entity) && component.name in entity,
+      ): entity is TOutput & {
+        [E in TComponents[number] as E['name']]: z.infer<E['schema']>;
+      } =>
+        this.filter(entity) &&
+        components.every((component) => component.name in entity),
     );
   }
 
@@ -65,7 +68,7 @@ export class Query<TInput extends EntityLike, TOutput extends TInput> {
     return result;
   }
 
-  intersect<TNewInput extends EntityLike, TNewOutput extends TNewInput>(
+  and<TNewInput extends EntityLike, TNewOutput extends TNewInput>(
     query: Query<TNewInput, TNewOutput>,
   ): Query<TInput & TNewInput, TOutput & TNewOutput> {
     return new Query(
