@@ -1,6 +1,19 @@
 export const entitySymbol: unique symbol = Symbol('zecs-entity');
 export const refSigil = '$$ref';
 
+export type TaggedEntity<TEntity> = TEntity & {
+  [entitySymbol]: string;
+};
+
+export function isTaggedEntity<T>(x: T): x is TaggedEntity<T> {
+  return typeof x === 'object' && !!x && entitySymbol in x;
+}
+
+export function getEntityId(entity: unknown): string | undefined {
+  if (!isTaggedEntity(entity)) return undefined;
+  return entity[entitySymbol];
+}
+
 export function isSerializedRef(
   value: unknown,
 ): value is { [refSigil]: string } {
@@ -24,7 +37,7 @@ export function serializeRefs(
   if (typeof value !== 'object') return value;
 
   // entity reference
-  if (entitySymbol in value && startDepth <= 0) {
+  if (isTaggedEntity(value) && startDepth <= 0) {
     return { [refSigil]: value[entitySymbol] };
   }
 

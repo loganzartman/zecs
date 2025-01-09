@@ -21,3 +21,12 @@ export function fromEntries<
 >(entries: TEntries): FromEntries<TEntries> {
   return Object.fromEntries(entries) as FromEntries<TEntries>;
 }
+
+export function every<T>(a: Iterable<T>, f: (e: T) => boolean): boolean {
+  for (const e of a) {
+    if (!f(e)) {
+      return false;
+    }
+  }
+  return true;
+}
