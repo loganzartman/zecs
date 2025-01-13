@@ -3,7 +3,7 @@ import type { ECS, EntityLike } from './ecs';
 import { type EventType, event } from './event';
 import type { Query } from './query';
 
-type Observer<TInput extends EntityLike, TOutput extends TInput> = {
+export type Observer<TInput extends EntityLike, TOutput extends TInput> = {
   enter: EventType<'enter', ZodType<TOutput>>;
   update: EventType<'update', ZodType<TOutput>>;
   exit: EventType<'exit', ZodType<TOutput>>;
