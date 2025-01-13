@@ -15,6 +15,7 @@ export function isSerializedRef(
 export function serializeRefs(
   value: unknown,
   startDepth: number,
+  getEntityID: (entity: object) => string | undefined,
   visited = new Set<unknown>(),
 ): unknown {
   // falsy
@@ -24,8 +25,9 @@ export function serializeRefs(
   if (typeof value !== 'object') return value;
 
   // entity reference
-  if (entitySymbol in value && startDepth <= 0) {
-    return { [refSigil]: value[entitySymbol] };
+  const entityID = getEntityID(value);
+  if (entityID && startDepth <= 0) {
+    return { [refSigil]: entityID };
   }
 
   // circular reference check
@@ -35,13 +37,15 @@ export function serializeRefs(
 
   // array
   if (Array.isArray(value))
-    return value.map((e) => serializeRefs(e, startDepth - 1, visited));
+    return value.map((e) =>
+      serializeRefs(e, startDepth - 1, getEntityID, visited),
+    );
 
   // object
   return Object.fromEntries(
     Object.entries(value).map(([key, e]) => [
       key,
-      serializeRefs(e, startDepth - 1, visited),
+      serializeRefs(e, startDepth - 1, getEntityID, visited),
     ]),
   );
 }

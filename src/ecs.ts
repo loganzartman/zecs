@@ -2,7 +2,7 @@ import { type ZodType, type ZodTypeAny, z } from 'zod';
 import packageJson from '../package.json';
 import type { Component } from './component';
 import type { Query } from './query';
-import { deserializeRefs, entitySymbol, serializeRefs } from './serialization';
+import { deserializeRefs, serializeRefs } from './serialization';
 import { type Empty, type Expand, entries, fromEntries } from './util';
 import { uuid } from './uuid';
 
@@ -33,6 +33,7 @@ export type ECSEntity<TECS extends ECS<EntityLike>> = TECS extends ECS<
 
 export class ECS<TEntity extends EntityLike> {
   #entityAliases: Map<string, Set<string>> = new Map();
+  #entityIDs = new WeakMap<object, string>();
   components: Readonly<EntityComponents<TEntity>>;
   entities: Record<string, Partial<TEntity>> = {};
   aliases: Record<string, string> = {};
@@ -52,10 +53,24 @@ export class ECS<TEntity extends EntityLike> {
     );
   }
 
+  #trackEntity<T extends object>(entity: T, id: string): T {
+    this.#entityIDs.set(entity, id);
+    return entity;
+  }
+
   #serializationSchema() {
     return z.object({
       zecs: z.literal(packageJson.version),
-      entities: z.record(z.string(), this.#entitySchema()),
+      entities: z
+        .record(z.string(), this.#entitySchema())
+        .transform((entities) =>
+          fromEntries(
+            entries(entities).map(([id, entity]) => [
+              id,
+              this.#trackEntity(entity, id),
+            ]),
+          ),
+        ),
       aliases: z.record(z.string(), z.string()),
     });
   }
@@ -70,8 +85,7 @@ export class ECS<TEntity extends EntityLike> {
       id = uuid();
     } while (id in this.entities);
 
-    Object.defineProperty(entity, entitySymbol, { value: id });
-    this.entities[id] = entity;
+    this.entities[id] = this.#trackEntity(entity, id);
     return id;
   }
 
@@ -111,6 +125,10 @@ export class ECS<TEntity extends EntityLike> {
     }
   }
 
+  getEntityID(entity: Partial<TEntity>): string | undefined {
+    return this.#entityIDs.get(entity);
+  }
+
   alias(alias: string, id: string): void {
     if (!(id in this.entities)) {
       throw new Error(`Entity with id ${id} does not exist`);
@@ -141,7 +159,7 @@ export class ECS<TEntity extends EntityLike> {
   toJSON() {
     return {
       zecs: packageJson.version,
-      entities: serializeRefs(this.entities, 2),
+      entities: serializeRefs(this.entities, 2, (e) => this.getEntityID(e)),
       aliases: this.aliases,
     };
   }
