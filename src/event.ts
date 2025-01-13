@@ -13,7 +13,7 @@ export type ListenerEventType<TListener extends Listener<string, ZodTypeAny>> =
     ? EventType<TName, TParams>
     : never;
 
-class EventType<TName extends string, TParams extends ZodTypeAny> {
+export class EventType<TName extends string, TParams extends ZodTypeAny> {
   name: TName;
   params: TParams;
   #listeners = new Set<Listener<TName, TParams>>();
