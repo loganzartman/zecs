@@ -1,19 +1,6 @@
 export const entitySymbol: unique symbol = Symbol('zecs-entity');
 export const refSigil = '$$ref';
 
-export type TaggedEntity<TEntity> = TEntity & {
-  [entitySymbol]: string;
-};
-
-export function isTaggedEntity<T>(x: T): x is TaggedEntity<T> {
-  return typeof x === 'object' && !!x && entitySymbol in x;
-}
-
-export function getEntityId(entity: unknown): string | undefined {
-  if (!isTaggedEntity(entity)) return undefined;
-  return entity[entitySymbol];
-}
-
 export function isSerializedRef(
   value: unknown,
 ): value is { [refSigil]: string } {
@@ -28,6 +15,7 @@ export function isSerializedRef(
 export function serializeRefs(
   value: unknown,
   startDepth: number,
+  getEntityID: (entity: object) => string | undefined,
   visited = new Set<unknown>(),
 ): unknown {
   // falsy
@@ -37,8 +25,9 @@ export function serializeRefs(
   if (typeof value !== 'object') return value;
 
   // entity reference
-  if (isTaggedEntity(value) && startDepth <= 0) {
-    return { [refSigil]: value[entitySymbol] };
+  const entityID = getEntityID(value);
+  if (entityID && startDepth <= 0) {
+    return { [refSigil]: entityID };
   }
 
   // circular reference check
@@ -48,13 +37,15 @@ export function serializeRefs(
 
   // array
   if (Array.isArray(value))
-    return value.map((e) => serializeRefs(e, startDepth - 1, visited));
+    return value.map((e) =>
+      serializeRefs(e, startDepth - 1, getEntityID, visited),
+    );
 
   // object
   return Object.fromEntries(
     Object.entries(value).map(([key, e]) => [
       key,
-      serializeRefs(e, startDepth - 1, visited),
+      serializeRefs(e, startDepth - 1, getEntityID, visited),
     ]),
   );
 }

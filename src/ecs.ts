@@ -2,12 +2,7 @@ import { type ZodType, type ZodTypeAny, z } from 'zod';
 import packageJson from '../package.json';
 import type { Component } from './component';
 import type { Query } from './query';
-import {
-  deserializeRefs,
-  entitySymbol,
-  serializeRefs,
-  type TaggedEntity,
-} from './serialization';
+import { deserializeRefs, serializeRefs } from './serialization';
 import { type Empty, type Expand, entries, fromEntries } from './util';
 import { uuid } from './uuid';
 
@@ -38,8 +33,9 @@ export type ECSEntity<TECS extends ECS<EntityLike>> = TECS extends ECS<
 
 export class ECS<TEntity extends EntityLike> {
   #entityAliases: Map<string, Set<string>> = new Map();
+  #entityIDs = new WeakMap<object, string>();
   components: Readonly<EntityComponents<TEntity>>;
-  entities: Record<string, TaggedEntity<Partial<TEntity>>> = {};
+  entities: Record<string, Partial<TEntity>> = {};
   aliases: Record<string, string> = {};
 
   constructor(components: EntityComponents<TEntity>) {
@@ -57,15 +53,9 @@ export class ECS<TEntity extends EntityLike> {
     );
   }
 
-  #trackEntity<T>(entity: T, id: string): TaggedEntity<T> {
-    const taggedEntity = {
-      ...entity,
-      [entitySymbol]: id,
-    };
-    Object.defineProperty(taggedEntity, entitySymbol, {
-      enumerable: false,
-    });
-    return taggedEntity;
+  #trackEntity<T extends object>(entity: T, id: string): T {
+    this.#entityIDs.set(entity, id);
+    return entity;
   }
 
   #serializationSchema() {
@@ -135,6 +125,10 @@ export class ECS<TEntity extends EntityLike> {
     }
   }
 
+  getEntityID(entity: Partial<TEntity>): string | undefined {
+    return this.#entityIDs.get(entity);
+  }
+
   alias(alias: string, id: string): void {
     if (!(id in this.entities)) {
       throw new Error(`Entity with id ${id} does not exist`);
@@ -165,7 +159,7 @@ export class ECS<TEntity extends EntityLike> {
   toJSON() {
     return {
       zecs: packageJson.version,
-      entities: serializeRefs(this.entities, 2),
+      entities: serializeRefs(this.entities, 2, (e) => this.getEntityID(e)),
       aliases: this.aliases,
     };
   }
@@ -174,7 +168,7 @@ export class ECS<TEntity extends EntityLike> {
     const { entities, aliases } = this.#serializationSchema().parse(json);
     this.entities = deserializeRefs(entities, entities) as Record<
       string,
-      TaggedEntity<Partial<TEntity>>
+      Partial<TEntity>
     >;
     for (const [alias, id] of entries(aliases)) {
       this.alias(alias, id);
