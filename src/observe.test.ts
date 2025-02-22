@@ -133,4 +133,28 @@ describe('observe', () => {
     expect(updated).toHaveBeenCalledTimes(1);
     expect(unmatched).not.toHaveBeenCalled();
   });
+
+  it('emits preUpdate, updated, and postUpdate events', () => {
+    const health = component('health', z.number());
+    const q = query().has(health);
+    const observer = observe(q);
+    const e = ecs([health]);
+
+    const event = jest.fn();
+
+    observer.preUpdate.on(() => event('preUpdate'));
+    observer.updated.on(() => event('updated'));
+    observer.postUpdate.on(() => event('postUpdate'));
+
+    e.add(e.entity({ health: 10 }));
+    e.add(e.entity({ health: 20 }));
+
+    observer.update(e);
+    expect(event.mock.calls).toEqual([
+      ['preUpdate'],
+      ['updated'],
+      ['updated'],
+      ['postUpdate'],
+    ]);
+  });
 });
