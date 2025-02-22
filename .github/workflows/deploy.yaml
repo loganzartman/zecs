@@ -26,19 +26,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           registry-url: "https://registry.npmjs.org"
-      - name: Enable corepack
-        run: corepack enable
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-      - uses: actions/cache@v4
-        name: Setup pnpm cache
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+      - uses: pnpm/action-setup@v4
       - run: pnpm install
       - run: pnpm ci-checks
       - run: pnpm build
@@ -59,8 +47,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           registry-url: "https://registry.npmjs.org"
-      - name: Enable corepack
-        run: corepack enable
+      - uses: pnpm/action-setup@v4
       - uses: actions/download-artifact@v4
         with:
           name: dist-artifacts
