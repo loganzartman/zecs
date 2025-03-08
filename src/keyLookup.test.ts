@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { type QueryOutput, component, ecs, query } from '.';
+import {
+  type ComponentsEntity,
+  type QueryOutput,
+  component,
+  ecs,
+  query,
+} from '.';
 import { keyLookup } from './keyLookup';
 
 describe('keyLookup', () => {
@@ -29,11 +35,61 @@ describe('keyLookup', () => {
     e.addAll([deadEntity, livingEntity1, livingEntity2]);
 
     const healthful = query().has(health);
-    const keyFn = (entity: QueryOutput<typeof healthful>) =>
-      entity.health.toString();
-    const lookup = keyLookup(e, healthful, keyFn);
+    const lookup = keyLookup(e, healthful, ({ health }) => [String(health)]);
 
     expect(lookup.get({ health: 0 })).toEqual(new Set([deadEntity]));
+  });
+
+  it('allows a partial key function', () => {
+    const health = component('health', z.number());
+    const position = component(
+      'position',
+      z.object({ x: z.number(), y: z.number() }),
+    );
+
+    const e = ecs([health, position]);
+    e.add(e.entity({ health: 0, position: { x: 0, y: 0 } }));
+
+    const lookup = keyLookup(
+      e,
+      query().has(health, position),
+      ({ position: { x, y } }: ComponentsEntity<[typeof position]>) => [
+        `${x},${y}`,
+      ],
+    );
+
+    lookup.get({ position: { x: 0, y: 0 } });
+  });
+
+  it('can count entities by key', () => {
+    const health = component('health', z.number());
+    const position = component(
+      'position',
+      z.object({ x: z.number(), y: z.number() }),
+    );
+
+    const e = ecs([health, position]);
+    e.addAll([
+      {
+        health: 0,
+        position: { x: 0, y: 0 },
+      },
+      {
+        health: 1,
+        position: { x: 0, y: 0 },
+      },
+      {
+        health: 1,
+        position: { x: 0, y: 0 },
+      },
+    ]);
+
+    const healthful = query().has(health);
+    const lookup = keyLookup(e, healthful, ({ health }) => [String(health)]);
+
+    expect(lookup.count({ health: 0 })).toEqual(1);
+    expect(lookup.count({ health: 1 })).toEqual(2);
+    expect(lookup.count({ health: 2 })).toEqual(0);
   });
 
   it('can do a spatial hash', () => {
@@ -65,17 +121,13 @@ describe('keyLookup', () => {
     const e = ecs([position]);
     e.addAll(entities);
 
-    const positioned = query().has(position);
-    const keyFn = (entity: QueryOutput<typeof positioned>) =>
-      JSON.stringify([
-        Math.floor(entity.position.x / 10),
-        Math.floor(entity.position.y / 10),
-      ]);
-    const lookup = keyLookup(e, positioned, keyFn);
-
-    expect(keyFn(entities[1])).toBe('[1,0]');
-    expect(keyFn(entities[3])).toBe('[1,0]');
-    expect(keyFn(entities[4])).toBe('[2,1]');
+    const lookup = keyLookup(
+      e,
+      query().has(position),
+      ({ position: { x, y } }: ComponentsEntity<[typeof position]>) => [
+        `${Math.floor(x / 10)},${Math.floor(y / 10)}`,
+      ],
+    );
 
     expect(lookup.get(entities[1])).toEqual(
       new Set([entities[1], entities[3]]),

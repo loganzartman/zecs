@@ -3,11 +3,19 @@ import type { Component } from './component';
 import type { ECS, EntityLike } from './ecs';
 import type { Empty } from './util';
 
-export type QueryInput<TQuery extends Query<EntityLike, EntityLike>> =
-  TQuery extends Query<infer TInput, any> ? TInput : never;
+export type QueryInput<TQuery extends Query<any, any>> = TQuery extends Query<
+  infer TInput,
+  any
+>
+  ? TInput
+  : never;
 
-export type QueryOutput<TQuery extends Query<EntityLike, EntityLike>> =
-  TQuery extends Query<any, infer TOutput> ? TOutput : never;
+export type QueryOutput<TQuery extends Query<any, any>> = TQuery extends Query<
+  any,
+  infer TOutput
+>
+  ? TOutput
+  : never;
 
 export class Query<TInput extends EntityLike, TOutput extends TInput> {
   filter: (entity: Partial<TInput>) => entity is TOutput;
@@ -40,6 +48,17 @@ export class Query<TInput extends EntityLike, TOutput extends TInput> {
     return new Query(
       (entity: Partial<TInput>) => this.filter(entity) && filter(entity),
     );
+  }
+
+  count<TEntity extends TInput>(ecs: ECS<TEntity>): number {
+    let count = 0;
+    for (const id in ecs.entities) {
+      const entity = ecs.entities[id];
+      if (this.filter(entity)) {
+        count++;
+      }
+    }
+    return count;
   }
 
   *query<TEntity extends TInput>(ecs: ECS<TEntity>): Generator<TOutput> {

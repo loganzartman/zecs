@@ -216,4 +216,26 @@ describe('query', () => {
       expect(result).toEqual([entity]);
     });
   });
+
+  describe('count()', () => {
+    it('counts the number of entities that match the query', () => {
+      const health = component('health', z.number());
+      const position = component(
+        'position',
+        z.object({ x: z.number(), y: z.number() }),
+      );
+      const healthful = query().has(health);
+
+      const e = ecs([health, position]);
+      e.addAll([
+        { health: 1, position: { x: 0, y: 0 } },
+        { health: 2, position: { x: 0, y: 0 } },
+        { position: { x: 0, y: 0 } },
+      ]);
+
+      const count = healthful.count(e);
+
+      expect(count).toEqual(2);
+    });
+  });
 });
