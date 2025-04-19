@@ -8,7 +8,7 @@ describe('observe', () => {
   it('emits events when entities match query', () => {
     const health = component('health', z.number());
     const q = query().has(health);
-    const observer = observe(q);
+    const observer = observe({ query: q, params: z.void() });
     const e = ecs([health]);
 
     const matched = jest.fn();
@@ -24,7 +24,7 @@ describe('observe', () => {
 
     observer.update(e);
     expect(matched).toHaveBeenCalledWith(entity);
-    expect(updated).toHaveBeenCalledWith(entity);
+    expect(updated).toHaveBeenCalledWith(entity, undefined);
     expect(unmatched).not.toHaveBeenCalled();
 
     observer.update(e);
@@ -45,7 +45,7 @@ describe('observe', () => {
       z.object({ x: z.number(), y: z.number() }),
     );
     const q = query().has(position);
-    const observer = observe(q);
+    const observer = observe({ query: q, params: z.void() });
     const e = ecs([position]);
 
     const matched = jest.fn();
@@ -71,7 +71,7 @@ describe('observe', () => {
     const alive = query()
       .has(health)
       .where(({ health }) => health > 0);
-    const observer = observe(alive);
+    const observer = observe({ query: alive, params: z.void() });
     const e = ecs([health]);
 
     const matched = jest.fn();
@@ -87,7 +87,7 @@ describe('observe', () => {
 
     observer.update(e);
     expect(matched).toHaveBeenCalledWith(entity);
-    expect(updated).toHaveBeenCalledWith(entity);
+    expect(updated).toHaveBeenCalledWith(entity, undefined);
     expect(unmatched).not.toHaveBeenCalled();
 
     // Entity stops matching query
@@ -106,7 +106,7 @@ describe('observe', () => {
   it('can unsubscribe from events', () => {
     const health = component('health', z.number());
     const q = query().has(health);
-    const observer = observe(q);
+    const observer = observe({ query: q, params: z.void() });
     const e = ecs([health]);
 
     const matched = jest.fn();
@@ -137,7 +137,7 @@ describe('observe', () => {
   it('emits preUpdate, updated, and postUpdate events', () => {
     const health = component('health', z.number());
     const q = query().has(health);
-    const observer = observe(q);
+    const observer = observe({ query: q, params: z.void() });
     const e = ecs([health]);
 
     const event = jest.fn();
@@ -156,5 +156,48 @@ describe('observe', () => {
       ['updated'],
       ['postUpdate'],
     ]);
+  });
+
+  it('attaches listeners passed in initializer', () => {
+    const health = component('health', z.number());
+    const matched = jest.fn();
+    const updated = jest.fn();
+    const unmatched = jest.fn();
+
+    const observer = observe({
+      query: query().has(health),
+      params: z.void(),
+      on: {
+        matched,
+        updated,
+        unmatched,
+      },
+    });
+
+    const e = ecs([health]);
+    const entity = e.entity({ health: 10 });
+    e.add(entity);
+
+    observer.update(e);
+    expect(matched).toHaveBeenCalledWith(entity);
+    expect(updated).toHaveBeenCalledWith(entity, undefined);
+    expect(unmatched).not.toHaveBeenCalled();
+  });
+
+  it('passes parameters to updated event', () => {
+    const health = component('health', z.number());
+    const q = query().has(health);
+    const observer = observe({ query: q, params: z.string() });
+    const e = ecs([health]);
+
+    const updated = jest.fn();
+
+    observer.updated.on(updated);
+
+    const entity = e.entity({ health: 10 });
+    e.add(entity);
+
+    observer.update(e, 'test');
+    expect(updated).toHaveBeenCalledWith(entity, 'test');
   });
 });

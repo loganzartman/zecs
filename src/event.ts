@@ -1,24 +1,29 @@
-import type { ZodTypeAny, z } from 'zod';
+import type { ZodType } from 'zod';
 
 declare const eventNameSymbol: unique symbol;
 
 type Off = () => void;
 
-export type Listener<TName extends string, TParams extends ZodTypeAny> = {
+export type Listener<TName extends string, TParams extends any[]> = {
   [eventNameSymbol]?: TName;
-} & ((params: z.infer<TParams>) => void);
+} & ((...params: TParams) => void);
 
-export type ListenerEventType<TListener extends Listener<string, ZodTypeAny>> =
+export type ListenerEventType<TListener extends Listener<string, any[]>> =
   TListener extends Listener<infer TName, infer TParams>
     ? EventType<TName, TParams>
     : never;
 
-export class EventType<TName extends string, TParams extends ZodTypeAny> {
+export type EventListenerType<TEventType extends EventType<string, any[]>> =
+  TEventType extends EventType<infer TName, infer TParams>
+    ? Listener<TName, TParams>
+    : never;
+
+export class EventType<TName extends string, TParams extends any[]> {
   name: TName;
-  params: TParams;
+  params: ZodType<TParams>;
   #listeners = new Set<Listener<TName, TParams>>();
 
-  constructor(name: TName, params: TParams) {
+  constructor(name: TName, params: ZodType<TParams>) {
     this.name = name;
     this.params = params;
   }
@@ -33,23 +38,23 @@ export class EventType<TName extends string, TParams extends ZodTypeAny> {
   }
 
   once(listener: Listener<TName, TParams>): Off {
-    const off = this.on((params) => {
+    const off = this.on((...params) => {
       off();
-      listener(params);
+      listener(...params);
     });
     return off;
   }
 
-  emit(params: z.infer<TParams>) {
+  emit(...params: TParams): void {
     for (const listener of this.#listeners) {
-      listener(params);
+      listener(...params);
     }
   }
 }
 
-export function event<TName extends string, TParams extends ZodTypeAny>(
+export function event<TName extends string, TParams extends any[]>(
   name: TName,
-  params: TParams,
+  params: ZodType<TParams>,
 ): EventType<TName, TParams> {
   return new EventType(name, params);
 }
