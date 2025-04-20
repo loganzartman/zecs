@@ -25,15 +25,6 @@ export type ObserverEvents<
   unmatched: EventType<'unmatched', [TOutput]>;
 };
 
-export type Observer<
-  TInput extends EntityLike,
-  TOutput extends TInput,
-  TParams,
-> = ObserverEvents<TInput, TOutput, TParams> & {
-  /** Update the set of matching entities and emit events */
-  update(ecs: ECS<TInput>, params: TParams): void;
-};
-
 export type ObserverInitialListeners<
   TInput extends EntityLike,
   TOutput extends TInput,
@@ -43,6 +34,97 @@ export type ObserverInitialListeners<
     ObserverEvents<TInput, TOutput, TParams>[K]
   >;
 };
+
+export class Observer<
+  TInput extends EntityLike,
+  TOutput extends TInput,
+  TParams,
+> implements ObserverEvents<TInput, TOutput, TParams>
+{
+  readonly query: Query<TInput, TOutput>;
+  readonly params: ZodType<TParams>;
+
+  readonly matched = event('matched', z.tuple([z.custom<TOutput>()]));
+  readonly preUpdate = event('preUpdate', z.tuple([]));
+  readonly updated = event(
+    'updated',
+    z.tuple([z.custom<TOutput>(), z.custom<TParams>()]),
+  );
+  readonly postUpdate = event('postUpdate', z.tuple([]));
+  readonly unmatched = event('unmatched', z.tuple([z.custom<TOutput>()]));
+
+  #updating: { status: true; params: TParams } | { status: false } = {
+    status: false,
+  };
+  #registry = new Set<TOutput>();
+  #matched = new Set<TOutput>();
+
+  constructor({
+    query,
+    params,
+    on,
+  }: {
+    query: Query<TInput, TOutput>;
+    params: ZodType<TParams>;
+    on?: ObserverInitialListeners<TInput, TOutput, TParams>;
+  }) {
+    this.query = query;
+    this.params = params;
+    if (on?.matched) this.matched.on(on.matched);
+    if (on?.preUpdate) this.preUpdate.on(on.preUpdate);
+    if (on?.updated)
+      this.updated.on(on.updated as Listener<'updated', [TOutput]>);
+    if (on?.postUpdate) this.postUpdate.on(on.postUpdate);
+    if (on?.unmatched) this.unmatched.on(on.unmatched);
+  }
+
+  startUpdate(params: TParams): void {
+    if (this.#updating.status) {
+      throw new Error('Observer is already updating');
+    }
+
+    this.#updating = { status: true, params };
+    this.#matched.clear();
+    this.preUpdate.emit();
+  }
+
+  updateEntity(entity: TOutput): void {
+    if (!this.#updating.status) {
+      throw new Error('Observer is not updating');
+    }
+
+    if (!this.#registry.has(entity)) {
+      this.#registry.add(entity);
+      this.matched.emit(entity);
+    }
+    this.updated.emit(entity, this.#updating.params);
+    this.#matched.add(entity);
+  }
+
+  finishUpdate(): void {
+    if (!this.#updating.status) {
+      throw new Error('Observer is not updating');
+    }
+
+    this.#updating = { status: false };
+    for (const entity of this.#registry) {
+      if (!this.#matched.has(entity)) {
+        this.#registry.delete(entity);
+        this.unmatched.emit(entity);
+      }
+    }
+    this.postUpdate.emit();
+  }
+
+  /** Update the set of matching entities and emit events */
+  update(ecs: ECS<TInput>, params: TParams): void {
+    this.startUpdate(params);
+    for (const entity of this.query.query(ecs)) {
+      this.updateEntity(entity);
+    }
+    this.finishUpdate();
+  }
+}
 
 /**
  * Watch the results of a query.
@@ -54,45 +136,10 @@ export function observe<
   TInput extends EntityLike,
   TOutput extends TInput,
   TParams,
->({
-  query,
-  params,
-  on,
-}: {
+>(options: {
   query: Query<TInput, TOutput>;
   params: ZodType<TParams>;
   on?: ObserverInitialListeners<TInput, TOutput, TParams>;
 }): Observer<TInput, TOutput, TParams> {
-  const registry = new Set<TOutput>();
-  const matched = event('matched', z.tuple([z.custom<TOutput>()]));
-  const preUpdate = event('preUpdate', z.tuple([]));
-  const updated = event('updated', z.tuple([z.custom<TOutput>(), params]));
-  const postUpdate = event('postUpdate', z.tuple([]));
-  const unmatched = event('unmatched', z.tuple([z.custom<TOutput>()]));
-
-  if (on?.matched) matched.on(on.matched);
-  if (on?.preUpdate) preUpdate.on(on.preUpdate);
-  if (on?.updated) updated.on(on.updated as Listener<'updated', [TOutput]>);
-  if (on?.postUpdate) postUpdate.on(on.postUpdate);
-  if (on?.unmatched) unmatched.on(on.unmatched);
-
-  function update(ecs: ECS<TInput>, args: TParams): void {
-    preUpdate.emit();
-    const missing = new Set<TOutput>(registry);
-    for (const entity of query.query(ecs)) {
-      if (!registry.has(entity)) {
-        registry.add(entity);
-        matched.emit(entity);
-      }
-      updated.emit(entity, args);
-      missing.delete(entity);
-    }
-    for (const entity of missing) {
-      registry.delete(entity);
-      unmatched.emit(entity);
-    }
-    postUpdate.emit();
-  }
-
-  return { matched, preUpdate, updated, postUpdate, unmatched, update };
+  return new Observer(options);
 }

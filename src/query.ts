@@ -64,7 +64,7 @@ export class Query<TInput extends EntityLike, TOutput extends TInput> {
   *query<TEntity extends TInput>(ecs: ECS<TEntity>): Generator<TOutput> {
     for (const id in ecs.entities) {
       const entity = ecs.entities[id];
-      if (this.filter(entity)) {
+      if (this.match(entity)) {
         yield entity;
       }
     }
