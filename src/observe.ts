@@ -16,11 +16,11 @@ export type ObserverEvents<
   /** Called when an entity now matches the query that was not on the previous update() */
   matched: EventType<'matched', [TOutput]>;
   /** Called once before the set of matching entities is updated */
-  preUpdate: EventType<'preUpdate', []>;
+  preUpdate: EventType<'preUpdate', [TParams]>;
   /** Called for each matching entity each update() */
   updated: EventType<'updated', [TOutput, TParams]>;
   /** Called once after the set of matching entities is updated */
-  postUpdate: EventType<'postUpdate', []>;
+  postUpdate: EventType<'postUpdate', [TParams]>;
   /** Called when an entity no longer matches the query that did on the previous update() */
   unmatched: EventType<'unmatched', [TOutput]>;
 };
@@ -44,14 +44,11 @@ export class Observer<
   readonly query: Query<TInput, TOutput>;
   readonly params: ZodType<TParams>;
 
-  readonly matched = event('matched', z.tuple([z.custom<TOutput>()]));
-  readonly preUpdate = event('preUpdate', z.tuple([]));
-  readonly updated = event(
-    'updated',
-    z.tuple([z.custom<TOutput>(), z.custom<TParams>()]),
-  );
-  readonly postUpdate = event('postUpdate', z.tuple([]));
-  readonly unmatched = event('unmatched', z.tuple([z.custom<TOutput>()]));
+  readonly matched: ObserverEvents<TInput, TOutput, TParams>['matched'];
+  readonly preUpdate: ObserverEvents<TInput, TOutput, TParams>['preUpdate'];
+  readonly updated: ObserverEvents<TInput, TOutput, TParams>['updated'];
+  readonly postUpdate: ObserverEvents<TInput, TOutput, TParams>['postUpdate'];
+  readonly unmatched: ObserverEvents<TInput, TOutput, TParams>['unmatched'];
 
   #updating: { status: true; params: TParams } | { status: false } = {
     status: false,
@@ -70,6 +67,13 @@ export class Observer<
   }) {
     this.query = query;
     this.params = params;
+
+    this.matched = event('matched', z.tuple([z.custom<TOutput>()]));
+    this.preUpdate = event('preUpdate', z.tuple([params]));
+    this.updated = event('updated', z.tuple([z.custom<TOutput>(), params]));
+    this.postUpdate = event('postUpdate', z.tuple([params]));
+    this.unmatched = event('unmatched', z.tuple([z.custom<TOutput>()]));
+
     if (on?.matched) this.matched.on(on.matched);
     if (on?.preUpdate) this.preUpdate.on(on.preUpdate);
     if (on?.updated)
@@ -85,7 +89,7 @@ export class Observer<
 
     this.#updating = { status: true, params };
     this.#matched.clear();
-    this.preUpdate.emit();
+    this.preUpdate.emit(params);
   }
 
   updateEntity(entity: TOutput): void {
@@ -106,14 +110,17 @@ export class Observer<
       throw new Error('Observer is not updating');
     }
 
+    const { params } = this.#updating;
     this.#updating = { status: false };
+
     for (const entity of this.#registry) {
       if (!this.#matched.has(entity)) {
         this.#registry.delete(entity);
         this.unmatched.emit(entity);
       }
     }
-    this.postUpdate.emit();
+
+    this.postUpdate.emit(params);
   }
 
   /** Update the set of matching entities and emit events */

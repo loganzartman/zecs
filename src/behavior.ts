@@ -12,6 +12,7 @@ export type BehaviorOptions<
   TOutput extends TInput,
   TParams extends Record<string, unknown>,
 > = {
+  name?: string;
   query: Query<TInput, TOutput>;
   params: ZodType<TParams>;
   deps: Behavior<any, any, any>[];
@@ -23,6 +24,7 @@ export class Behavior<
   TOutput extends TInput,
   TParams extends Record<string, unknown>,
 > {
+  name: string;
   /** Apply to matching entities */
   query: Query<TInput, TOutput>;
   /** Other behaviors that are dependencies of this behavior */
@@ -33,11 +35,13 @@ export class Behavior<
   #on: ObserverInitialListeners<TInput, TOutput, TParams> | undefined;
 
   constructor({
+    name,
     query,
     params,
     deps,
     on,
   }: BehaviorOptions<TInput, TOutput, TParams>) {
+    this.name = name ?? '<unnamed>';
     this.query = query;
     this.params = params;
     this.deps = deps;

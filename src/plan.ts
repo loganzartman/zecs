@@ -57,29 +57,37 @@ export class Plan<
         observer.update(ecs, params);
       }
     }
+  }
 
-    // for (const step of this.steps) {
-    //   for (const behavior of step) {
-    //     behavior.observer.startUpdate(params);
-    //   }
-    //   for (const entity of Object.values(ecs.entities)) {
-    //     for (const behavior of step) {
-    //       if (behavior.query.match(entity)) {
-    //         behavior.observer.updateEntity(entity);
-    //       }
-    //     }
-    //   }
-    //   for (const behavior of step) {
-    //     behavior.observer.finishUpdate();
-    //   }
-    // }
+  update2(ecs: ECS<TInput>, params: CombinedParams<TBehaviors>): void {
+    for (const step of this.steps) {
+      for (const behavior of step) {
+        const observer = this.#observers.get(behavior);
+        if (!observer) throw new Error('Observer not found for behavior');
+        observer.startUpdate(params);
+      }
+      for (const entity of Object.values(ecs.entities)) {
+        for (const behavior of step) {
+          if (behavior.query.match(entity)) {
+            const observer = this.#observers.get(behavior);
+            if (!observer) throw new Error('Observer not found for behavior');
+            observer.updateEntity(entity);
+          }
+        }
+      }
+      for (const behavior of step) {
+        const observer = this.#observers.get(behavior);
+        if (!observer) throw new Error('Observer not found for behavior');
+        observer.finishUpdate();
+      }
+    }
   }
 }
 
 export function plan<
   TInput extends EntityLike,
   TOutput extends TInput,
-  const TBehaviors extends Array<Behavior<TInput, TOutput, any>>,
+  const TBehaviors extends Array<Behavior<any, any, any>>,
 >(behaviors: TBehaviors): Plan<TInput, TOutput, TBehaviors> {
   return new Plan(behaviors);
 }
