@@ -27,23 +27,38 @@ export class Plan<
       this.#observers.set(behavior, behavior.observe());
     }
 
-    const parentMap = makeParentMap(behaviors);
-    const leaves = behaviors.filter((b) => b.deps.length === 0);
+    const dependers = makeDependersMap(behaviors);
+    const remainingDeps = new Map<Behavior<any, any, any>, number>();
+    const removed = new Set<Behavior<any, any, any>>();
 
-    const queue = leaves.map((behavior) => ({ behavior, step: 0 }));
+    for (const behavior of behaviors) {
+      remainingDeps.set(behavior, behavior.deps.length);
+    }
 
-    while (queue.length > 0) {
-      const next = queue.shift();
-      if (!next) throw new Error('Unexpected empty queue');
-      const { behavior, step } = next;
+    while (remainingDeps.size > 0) {
+      removed.clear();
+      const step = new Set<TBehaviors[number]>();
+      this.steps.push(step);
 
-      const stepBehaviors = this.steps[step] ?? new Set();
-      this.steps[step] = stepBehaviors;
-      stepBehaviors.add(behavior);
+      for (const [behavior, count] of remainingDeps) {
+        if (count > 0) {
+          continue;
+        }
 
-      for (const parent of parentMap.get(behavior) ?? []) {
-        queue.push({ behavior: parent, step: step + 1 });
+        step.add(behavior);
+        remainingDeps.delete(behavior);
+        removed.add(behavior);
       }
+
+      for (const dep of removed) {
+        for (const depender of dependers.get(dep) ?? []) {
+          const remaining = remainingDeps.get(depender);
+          if (remaining === undefined) throw new Error('Depender not found');
+          remainingDeps.set(depender, remaining - 1);
+        }
+      }
+
+      if (step.size === 0) throw new Error('Invalid dependency graph');
     }
   }
 
@@ -58,30 +73,6 @@ export class Plan<
       }
     }
   }
-
-  update2(ecs: ECS<TInput>, params: CombinedParams<TBehaviors>): void {
-    for (const step of this.steps) {
-      for (const behavior of step) {
-        const observer = this.#observers.get(behavior);
-        if (!observer) throw new Error('Observer not found for behavior');
-        observer.startUpdate(params);
-      }
-      for (const entity of Object.values(ecs.entities)) {
-        for (const behavior of step) {
-          if (behavior.query.match(entity)) {
-            const observer = this.#observers.get(behavior);
-            if (!observer) throw new Error('Observer not found for behavior');
-            observer.updateEntity(entity);
-          }
-        }
-      }
-      for (const behavior of step) {
-        const observer = this.#observers.get(behavior);
-        if (!observer) throw new Error('Observer not found for behavior');
-        observer.finishUpdate();
-      }
-    }
-  }
 }
 
 export function plan<
@@ -92,23 +83,34 @@ export function plan<
   return new Plan(behaviors);
 }
 
-function makeParentMap<TBehaviors extends Array<Behavior<any, any, any>>>(
+export function formatPlan(plan: Plan<any, any, any>): string {
+  return plan.steps
+    .map((step, index) => {
+      const behaviors = Array.from(step)
+        .map((b) => b.name)
+        .join(', ');
+      return `Step ${index}: ${behaviors}`;
+    })
+    .join('\n');
+}
+
+function makeDependersMap<TBehaviors extends Array<Behavior<any, any, any>>>(
   behaviors: TBehaviors,
 ): WeakMap<TBehaviors[number], TBehaviors[number][]> {
-  const parentMap = new WeakMap<
+  const dependersMap = new WeakMap<
     Behavior<EntityLike, EntityLike, Record<string, unknown>>,
     Behavior<EntityLike, EntityLike, Record<string, unknown>>[]
   >();
 
   for (const behavior of behaviors) {
     for (const dep of behavior.deps) {
-      let parents = parentMap.get(dep);
-      if (!parents) {
-        parents = [];
-        parentMap.set(dep, parents);
+      let dependers = dependersMap.get(dep);
+      if (!dependers) {
+        dependers = [];
+        dependersMap.set(dep, dependers);
       }
-      parents.push(behavior);
+      dependers.push(behavior);
     }
   }
-  return parentMap;
+  return dependersMap;
 }

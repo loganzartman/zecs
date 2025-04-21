@@ -1,11 +1,11 @@
 import { z } from 'zod';
 import { behavior } from './behavior';
-import { plan } from './plan';
+import { plan, formatPlan } from './plan';
 import { query } from './query';
 import { ecs } from './ecs';
 
 describe('behavior', () => {
-  it('groups and orders steps by dependencies', () => {
+  it('groups and orders steps by dependencies for a tree', () => {
     const D = behavior({ query: query(), deps: [], params: z.object({}) });
     const E = behavior({ query: query(), deps: [], params: z.object({}) });
     const C = behavior({ query: query(), deps: [D, E], params: z.object({}) });
@@ -17,6 +17,35 @@ describe('behavior', () => {
       new Set([D, E]),
       new Set([C]),
       new Set([A, B]),
+    ]);
+  });
+
+  it('groups and orders steps with redundant dependencies', () => {
+    const A = behavior({
+      name: 'A',
+      query: query(),
+      deps: [],
+      params: z.object({}),
+    });
+    const B = behavior({
+      name: 'B',
+      query: query(),
+      deps: [A],
+      params: z.object({}),
+    });
+    const C = behavior({
+      name: 'C',
+      query: query(),
+      deps: [A, B],
+      params: z.object({}),
+    });
+
+    const myPlan = plan([A, B, C]);
+    console.log(formatPlan(myPlan));
+    expect(myPlan.steps).toMatchObject([
+      new Set([A]),
+      new Set([B]),
+      new Set([C]),
     ]);
   });
 

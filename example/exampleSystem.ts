@@ -176,12 +176,13 @@ const drawCollider = zecs.behavior({
   },
 });
 
-export function makeExample() {
+export function makeExample({ n }: { n: number }) {
   const plan = zecs.plan([
     gravity,
     tethering,
     kinematics,
     walls,
+    drawBg,
     drawTether,
     drawCollider,
   ]);
@@ -194,7 +195,7 @@ export function makeExample() {
     tether,
   ]);
 
-  for (let i = 0; i < 100; ++i) {
+  for (let i = 0; i < n; ++i) {
     ecs.add(
       ecs.entity({
         mass: Math.random(),

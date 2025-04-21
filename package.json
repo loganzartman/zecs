@@ -10,10 +10,10 @@
   "scripts": {
     "build": "parcel build",
     "types": "tsc --noEmit --project tsconfig.json",
-    "test": "jest && pnpm bench",
+    "test": "jest",
     "example": "parcel example/example.html",
-    "bench": "tsx --expose-gc example/benchmarks.js",
-    "bench-debug": "tsx --expose-gc --inspect-brk example/benchmarks.js",
+    "bench": "tsx --expose-gc example/benchmarks.ts",
+    "bench-debug": "tsx --expose-gc --inspect-brk example/benchmarks.ts",
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "check:ci": "biome ci .",
