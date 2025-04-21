@@ -1,6 +1,6 @@
 {
   "name": "zecs",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "description": "strongly-typed entity-component-system implementation for hobby use",
   "source": "src/index.ts",
   "main": "dist/index.js",
@@ -11,6 +11,9 @@
     "build": "parcel build",
     "types": "tsc --noEmit --project tsconfig.json",
     "test": "jest",
+    "example": "parcel example/example.html",
+    "bench": "tsx --expose-gc example/benchmarks.ts",
+    "bench-debug": "tsx --expose-gc --inspect-brk example/benchmarks.ts",
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "check:ci": "biome ci .",
@@ -29,8 +32,10 @@
     "@parcel/transformer-typescript-types": "2.13.2",
     "@types/jest": "^29.5.14",
     "jest": "^29.7.0",
+    "mitata": "^1.0.34",
     "parcel": "^2.13.2",
     "ts-jest": "^29.2.5",
+    "tsx": "^4.19.3",
     "typescript": "^5.7.2",
     "zod": "^3.23.8"
   }
