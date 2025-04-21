@@ -1,5 +1,5 @@
-import { makeExample } from './exampleSystem';
 import { bench, run } from 'mitata';
+import { makeExample } from './exampleSystem';
 
 bench('update', function* (state: any) {
   const { plan, ecs } = makeExample({ n: state.get('n') });

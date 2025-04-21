@@ -1,11 +1,11 @@
+import type { ZodType } from 'zod';
 import type { EntityLike } from './ecs';
-import type { Query } from './query';
 import {
-  observe,
   type Observer,
   type ObserverInitialListeners,
+  observe,
 } from './observe';
-import type { ZodType } from 'zod';
+import type { Query } from './query';
 
 export type BehaviorOptions<
   TInput extends EntityLike,

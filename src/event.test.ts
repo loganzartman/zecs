@@ -3,7 +3,10 @@ import { event } from './event';
 
 describe('events', () => {
   it('can subscribe to events', () => {
-    const scoreEvent = event('score', z.object({ points: z.number() }));
+    const scoreEvent = event(
+      'score',
+      z.tuple([z.object({ points: z.number() })]),
+    );
     scoreEvent.on((params) => {
       expect(params.points).toBe(10);
     });
@@ -11,7 +14,10 @@ describe('events', () => {
   });
 
   it('can unsubscribe from events', () => {
-    const scoreEvent = event('score', z.object({ points: z.number() }));
+    const scoreEvent = event(
+      'score',
+      z.tuple([z.object({ points: z.number() })]),
+    );
     const off = scoreEvent.on((params) => {
       expect(params.points).toBe(10);
     });
@@ -20,7 +26,10 @@ describe('events', () => {
   });
 
   it('can subscribe to events once', () => {
-    const scoreEvent = event('score', z.object({ points: z.number() }));
+    const scoreEvent = event(
+      'score',
+      z.tuple([z.object({ points: z.number() })]),
+    );
     scoreEvent.once((params) => {
       expect(params.points).toBe(10);
       expect(params.points).not.toBe(20);
@@ -30,7 +39,10 @@ describe('events', () => {
   });
 
   it('can have multiple listeners', () => {
-    const scoreEvent = event('score', z.object({ points: z.number() }));
+    const scoreEvent = event(
+      'score',
+      z.tuple([z.object({ points: z.number() })]),
+    );
     const listener1 = jest.fn();
     const listener2 = jest.fn();
     scoreEvent.on(listener1);

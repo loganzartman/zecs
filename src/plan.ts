@@ -1,5 +1,5 @@
-import type { EntityLike } from '../dist';
 import type { Behavior } from './behavior';
+import type { EntityLike } from './ecs';
 import type { ECS } from './ecs';
 import type { Observer } from './observe';
 

@@ -2,7 +2,6 @@ import z from 'zod';
 import { component } from './component';
 import { type ECSWith, ecs } from './ecs';
 import { query } from './query';
-import type { Empty } from './util';
 
 describe('zecs', () => {
   it('works end-to-end', () => {

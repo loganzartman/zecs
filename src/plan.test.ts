@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { behavior } from './behavior';
-import { plan, formatPlan } from './plan';
-import { query } from './query';
 import { ecs } from './ecs';
+import { formatPlan, plan } from './plan';
+import { query } from './query';
 
 describe('behavior', () => {
   it('groups and orders steps by dependencies for a tree', () => {
