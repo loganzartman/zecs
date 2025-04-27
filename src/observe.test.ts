@@ -23,7 +23,7 @@ describe('observe', () => {
     const id = e.add(entity);
 
     observer.update(e);
-    expect(matched).toHaveBeenCalledWith(entity);
+    expect(matched).toHaveBeenCalledWith(entity, undefined);
     expect(updated).toHaveBeenCalledWith(entity, undefined);
     expect(unmatched).not.toHaveBeenCalled();
 
@@ -36,7 +36,7 @@ describe('observe', () => {
     observer.update(e);
     expect(matched).toHaveBeenCalledTimes(1);
     expect(updated).toHaveBeenCalledTimes(2);
-    expect(unmatched).toHaveBeenCalledWith(entity);
+    expect(unmatched).toHaveBeenCalledWith(entity, undefined);
   });
 
   it('handles multiple entities', () => {
@@ -86,14 +86,14 @@ describe('observe', () => {
     const id = e.add(entity);
 
     observer.update(e);
-    expect(matched).toHaveBeenCalledWith(entity);
+    expect(matched).toHaveBeenCalledWith(entity, undefined);
     expect(updated).toHaveBeenCalledWith(entity, undefined);
     expect(unmatched).not.toHaveBeenCalled();
 
     // Entity stops matching query
     e.entities[id].health = 0;
     observer.update(e);
-    expect(unmatched).toHaveBeenCalledWith(entity);
+    expect(unmatched).toHaveBeenCalledWith(entity, undefined);
     expect(updated).toHaveBeenCalledTimes(1);
 
     // Entity matches again
@@ -179,7 +179,7 @@ describe('observe', () => {
     e.add(entity);
 
     observer.update(e);
-    expect(matched).toHaveBeenCalledWith(entity);
+    expect(matched).toHaveBeenCalledWith(entity, undefined);
     expect(updated).toHaveBeenCalledWith(entity, undefined);
     expect(unmatched).not.toHaveBeenCalled();
   });

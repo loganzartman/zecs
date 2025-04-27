@@ -13,16 +13,16 @@ export type ObserverEvents<
   TOutput extends TInput,
   TParams,
 > = {
-  /** Called when an entity now matches the query that was not on the previous update() */
-  matched: EventType<'matched', [TOutput]>;
-  /** Called once before the set of matching entities is updated */
+  /** Called when an entity now matches the query that did not on the previous update() */
+  matched: EventType<'matched', [TOutput, TParams]>;
+  /** Called each time entities are updated, before the update occurs */
   preUpdate: EventType<'preUpdate', [TParams]>;
-  /** Called for each matching entity each update() */
+  /** Called for each matching entity each update */
   updated: EventType<'updated', [TOutput, TParams]>;
-  /** Called once after the set of matching entities is updated */
+  /** Called each time entities are updated, after the update is finished */
   postUpdate: EventType<'postUpdate', [TParams]>;
   /** Called when an entity no longer matches the query that did on the previous update() */
-  unmatched: EventType<'unmatched', [TOutput]>;
+  unmatched: EventType<'unmatched', [TOutput, TParams]>;
 };
 
 export type ObserverInitialListeners<
@@ -68,11 +68,11 @@ export class Observer<
     this.query = query;
     this.params = params;
 
-    this.matched = event('matched', z.tuple([z.custom<TOutput>()]));
+    this.matched = event('matched', z.tuple([z.custom<TOutput>(), params]));
     this.preUpdate = event('preUpdate', z.tuple([params]));
     this.updated = event('updated', z.tuple([z.custom<TOutput>(), params]));
     this.postUpdate = event('postUpdate', z.tuple([params]));
-    this.unmatched = event('unmatched', z.tuple([z.custom<TOutput>()]));
+    this.unmatched = event('unmatched', z.tuple([z.custom<TOutput>(), params]));
 
     if (on?.matched) this.matched.on(on.matched);
     if (on?.preUpdate) this.preUpdate.on(on.preUpdate);
@@ -99,7 +99,7 @@ export class Observer<
 
     if (!this.#registry.has(entity)) {
       this.#registry.add(entity);
-      this.matched.emit(entity);
+      this.matched.emit(entity, this.#updating.params);
     }
     this.updated.emit(entity, this.#updating.params);
     this.#matched.add(entity);
@@ -116,7 +116,7 @@ export class Observer<
     for (const entity of this.#registry) {
       if (!this.#matched.has(entity)) {
         this.#registry.delete(entity);
-        this.unmatched.emit(entity);
+        this.unmatched.emit(entity, params);
       }
     }
 
