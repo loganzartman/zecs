@@ -12,11 +12,18 @@ export type BehaviorOptions<
   TOutput extends TInput,
   TParams extends Record<string, unknown>,
 > = {
+  /** Human-readable name for debugging */
   name?: string;
+  /** Matches entities to be updated by this behavior */
   query: Query<TInput, TOutput>;
+  /** Parameters which must be passed to update() and are forwarded to preUpdate, updated, and postUpdate events */
   params: ZodType<TParams>;
+  /** Behaviors that must be updated before this one */
   deps: Behavior<any, any, any>[];
-  on?: ObserverInitialListeners<TInput, TOutput, TParams>;
+  /** Listeners to attach to the observer */
+  on?:
+    | ObserverInitialListeners<TInput, TOutput, TParams>
+    | (() => ObserverInitialListeners<TInput, TOutput, TParams>);
 };
 
 export class Behavior<
@@ -25,14 +32,13 @@ export class Behavior<
   TParams extends Record<string, unknown>,
 > {
   name: string;
-  /** Apply to matching entities */
   query: Query<TInput, TOutput>;
-  /** Other behaviors that are dependencies of this behavior */
   deps: Behavior<EntityLike, EntityLike, Record<string, unknown>>[];
-  /** Parameters required to update the system */
   params: ZodType<TParams>;
 
-  #on: ObserverInitialListeners<TInput, TOutput, TParams> | undefined;
+  #on:
+    | ObserverInitialListeners<TInput, TOutput, TParams>
+    | (() => ObserverInitialListeners<TInput, TOutput, TParams>);
 
   constructor({
     name,
@@ -45,7 +51,7 @@ export class Behavior<
     this.query = query;
     this.params = params;
     this.deps = deps;
-    this.#on = on;
+    this.#on = on ?? {};
   }
 
   /** Produce a clone of this behavior with additional dependencies */
@@ -64,7 +70,7 @@ export class Behavior<
     return observe({
       query: this.query,
       params: this.params,
-      on: this.#on,
+      on: typeof this.#on === 'function' ? this.#on() : this.#on,
     });
   }
 }
