@@ -5,14 +5,14 @@ import { plan } from './plan';
 import { query } from './query';
 
 describe('behavior', () => {
-  it('groups and orders steps by dependencies for a tree', () => {
+  it('groups and orders steps by dependencies for a tree', async () => {
     const D = behavior({ query: query(), deps: [], params: z.object({}) });
     const E = behavior({ query: query(), deps: [], params: z.object({}) });
     const C = behavior({ query: query(), deps: [D, E], params: z.object({}) });
     const A = behavior({ query: query(), deps: [C], params: z.object({}) });
     const B = behavior({ query: query(), deps: [C], params: z.object({}) });
 
-    const myPlan = plan([A, B, C, D, E]);
+    const myPlan = await plan([A, B, C, D, E]);
     expect(myPlan.steps).toMatchObject([
       new Set([D, E]),
       new Set([C]),
@@ -20,7 +20,7 @@ describe('behavior', () => {
     ]);
   });
 
-  it('groups and orders steps with redundant dependencies', () => {
+  it('groups and orders steps with redundant dependencies', async () => {
     const A = behavior({
       name: 'A',
       query: query(),
@@ -40,7 +40,7 @@ describe('behavior', () => {
       params: z.object({}),
     });
 
-    const myPlan = plan([A, B, C]);
+    const myPlan = await plan([A, B, C]);
     expect(myPlan.steps).toMatchObject([
       new Set([A]),
       new Set([B]),
@@ -48,7 +48,7 @@ describe('behavior', () => {
     ]);
   });
 
-  it('collects parameters from all behaviors', () => {
+  it('collects parameters from all behaviors', async () => {
     const aUpdated = jest.fn();
     const bUpdated = jest.fn();
     const cUpdated = jest.fn();
@@ -83,7 +83,7 @@ describe('behavior', () => {
     const myEcs = ecs([]);
     myEcs.add({});
 
-    const myPlan = plan([A, B, C]);
+    const myPlan = await plan([A, B, C]);
     myPlan.update(myEcs, { a: 'test', b: 42, c: true });
 
     expect(aUpdated).toHaveBeenCalledWith(

@@ -176,8 +176,8 @@ const drawCollider = zecs.behavior({
   },
 });
 
-export function makeExample({ n }: { n: number }) {
-  const plan = zecs.plan([
+export async function makeExample({ n }: { n: number }) {
+  const plan = await zecs.plan([
     gravity,
     tethering,
     kinematics,

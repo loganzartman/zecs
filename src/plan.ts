@@ -22,10 +22,29 @@ export class Plan<
   #observers: Map<TBehaviors[number], Observer<TInput, TOutput, any>> =
     new Map();
 
-  constructor(behaviors: TBehaviors) {
-    for (const behavior of behaviors) {
-      this.#observers.set(behavior, behavior.observe());
-    }
+  static async from<
+    TInput extends EntityLike,
+    TOutput extends TInput,
+    const TBehaviors extends Array<Behavior<TInput, TOutput, any>>,
+  >(behaviors: TBehaviors): Promise<Plan<TInput, TOutput, TBehaviors>> {
+    const observers = new Map<
+      TBehaviors[number],
+      Observer<TInput, TOutput, any>
+    >(
+      await Promise.all(
+        behaviors.map(
+          async (behavior) => [behavior, await behavior.observe()] as const,
+        ),
+      ),
+    );
+    return new Plan(behaviors, observers);
+  }
+
+  private constructor(
+    behaviors: TBehaviors,
+    observers: Map<TBehaviors[number], Observer<TInput, TOutput, any>>,
+  ) {
+    this.#observers = observers;
 
     const dependers = makeDependersMap(behaviors);
     const remainingDeps = new Map<Behavior<any, any, any>, number>();
@@ -79,8 +98,8 @@ export function plan<
   TInput extends EntityLike,
   TOutput extends TInput,
   const TBehaviors extends Array<Behavior<any, any, any>>,
->(behaviors: TBehaviors): Plan<TInput, TOutput, TBehaviors> {
-  return new Plan(behaviors);
+>(behaviors: TBehaviors): Promise<Plan<TInput, TOutput, TBehaviors>> {
+  return Plan.from(behaviors);
 }
 
 export function formatPlan(plan: Plan<any, any, any>): string {

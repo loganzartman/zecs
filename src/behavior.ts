@@ -23,7 +23,8 @@ export type BehaviorOptions<
   /** Listeners to attach to the observer */
   on?:
     | ObserverInitialListeners<TInput, TOutput, TParams>
-    | (() => ObserverInitialListeners<TInput, TOutput, TParams>);
+    | (() => ObserverInitialListeners<TInput, TOutput, TParams>)
+    | (() => Promise<ObserverInitialListeners<TInput, TOutput, TParams>>);
 };
 
 export class Behavior<
@@ -38,7 +39,8 @@ export class Behavior<
 
   #on:
     | ObserverInitialListeners<TInput, TOutput, TParams>
-    | (() => ObserverInitialListeners<TInput, TOutput, TParams>);
+    | (() => ObserverInitialListeners<TInput, TOutput, TParams>)
+    | (() => Promise<ObserverInitialListeners<TInput, TOutput, TParams>>);
 
   constructor({
     name,
@@ -66,11 +68,11 @@ export class Behavior<
     });
   }
 
-  observe(): Observer<TInput, TOutput, TParams> {
+  async observe(): Promise<Observer<TInput, TOutput, TParams>> {
     return observe({
       query: this.query,
       params: this.params,
-      on: typeof this.#on === 'function' ? this.#on() : this.#on,
+      on: typeof this.#on === 'function' ? await this.#on() : this.#on,
     });
   }
 }

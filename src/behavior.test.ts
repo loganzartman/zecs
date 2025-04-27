@@ -4,7 +4,7 @@ import { ecs } from './ecs';
 import { query } from './query';
 
 describe('behavior', () => {
-  it('attaches initial listeners', () => {
+  it('attaches initial listeners', async () => {
     const updated = jest.fn();
     const b = behavior({
       query: query(),
@@ -18,13 +18,13 @@ describe('behavior', () => {
     const ecsInstance = ecs([]);
     ecsInstance.add({});
 
-    const observer = b.observe();
+    const observer = await b.observe();
     observer.update(ecsInstance, {});
 
     expect(updated).toHaveBeenCalled();
   });
 
-  it('supports initial listener thunk', () => {
+  it('supports initial listener thunk', async () => {
     const updated = jest.fn();
     const b = behavior({
       query: query(),
@@ -38,7 +38,7 @@ describe('behavior', () => {
     const ecsInstance = ecs([]);
     ecsInstance.add({});
 
-    const observer = b.observe();
+    const observer = await b.observe();
     observer.update(ecsInstance, {});
 
     expect(updated).toHaveBeenCalled();
