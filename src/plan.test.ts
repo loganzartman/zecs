@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { behavior } from './behavior';
 import { ecs } from './ecs';
-import { formatPlan, plan } from './plan';
+import { plan } from './plan';
 import { query } from './query';
 
 describe('behavior', () => {
@@ -41,7 +41,6 @@ describe('behavior', () => {
     });
 
     const myPlan = plan([A, B, C]);
-    console.log(formatPlan(myPlan));
     expect(myPlan.steps).toMatchObject([
       new Set([A]),
       new Set([B]),

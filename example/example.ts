@@ -1,9 +1,6 @@
-import { formatPlan } from '../src/plan.js';
 import { makeExample } from './exampleSystem.js';
 
 const { ecs, plan } = makeExample({ n: 100 });
-
-console.log(formatPlan(plan));
 
 const canvas = document.getElementById('canvas');
 if (!(canvas instanceof HTMLCanvasElement))
