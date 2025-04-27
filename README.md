@@ -10,7 +10,13 @@ tightly integrated with [zod](https://zod.dev/) for schemas
 
 ## usage example
 
-https://github.com/loganzartman/zecs/blob/2eca8891edbac3e591cd8d14b11c43b12901c0a0/src/index.test.ts#L8-L57
+create a system of components and behaviors:
+
+https://github.com/loganzartman/zecs/blob/181b1cfc42bb3b0c847480fc4615758f4523a9af/example/exampleSystem.ts#L1-L221
+
+game loop:
+
+https://github.com/loganzartman/zecs/blob/181b1cfc42bb3b0c847480fc4615758f4523a9af/example/example.ts#L16-L25
 
 ## features
 
