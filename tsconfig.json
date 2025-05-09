@@ -10,5 +10,11 @@
     "noImplicitAny": true,
     "strict": true,
     "checkJs": true
-  }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.js",
+    "example/**/*.ts",
+    "example/**/*.js"
+  ]
 }

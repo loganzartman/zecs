@@ -37,6 +37,10 @@ export class EventType<TName extends string, TParams extends any[]> {
     this.#listeners.delete(listener);
   }
 
+  offAll(): void {
+    this.#listeners.clear();
+  }
+
   once(listener: Listener<TName, TParams>): Off {
     const off = this.on((...params) => {
       off();
