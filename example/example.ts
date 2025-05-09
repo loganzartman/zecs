@@ -1,7 +1,7 @@
 import { makeExample } from './exampleSystem.js';
 
 async function main() {
-  const { ecs, plan } = await makeExample({ n: 100 });
+  const { ecs, update } = await makeExample({ n: 100 });
 
   const canvas = document.getElementById('canvas');
   if (!(canvas instanceof HTMLCanvasElement))
@@ -11,18 +11,18 @@ async function main() {
 
   let lastTime = Date.now();
 
-  const update = () => {
+  const animationLoop = () => {
     const dt = (Date.now() - lastTime) / 1000;
     lastTime = Date.now();
 
     ctx.resetTransform();
     ctx.scale(ctx.canvas.width, ctx.canvas.height);
 
-    plan.update(ecs, { g: 9.81, dt: dt * 3, ctx });
-    requestAnimationFrame(update);
+    update({ dt: dt * 3, ctx });
+    requestAnimationFrame(animationLoop);
   };
 
-  requestAnimationFrame(update);
+  requestAnimationFrame(animationLoop);
 }
 
 main().catch((error) => {

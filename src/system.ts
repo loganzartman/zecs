@@ -1,7 +1,7 @@
 import type { ZodType } from 'zod';
 import type { ECS, EntityLike } from './ecs';
+import { type Observer, observe } from './observe';
 import type { Query } from './query';
-import { observe, type Observer } from './observe';
 
 export type SystemConfig<
   TInput extends EntityLike,
@@ -156,12 +156,22 @@ export class System<
             return;
           }
 
-          const derivedResources = derived.get(entity);
-          if (!derivedResources) {
-            throw new Error('Derived resource not found for updated entity');
+          let derivedResources: TDerived;
+          if (configDerived) {
+            if (!derived.has(entity)) {
+              throw new Error('Derived resource not found for updated entity');
+            }
+            derivedResources = derived.get(entity) as TDerived;
+          } else {
+            derivedResources = undefined as TDerived;
           }
 
-          onUpdated({ params, shared, derived: derivedResources, entity });
+          onUpdated({
+            params,
+            shared,
+            derived: derivedResources,
+            entity,
+          });
         },
 
         unmatched(entity) {
