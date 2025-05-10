@@ -2,8 +2,8 @@ import { z } from 'zod';
 import { component } from './component';
 import { ecs } from './ecs';
 import { query } from './query';
-import { formatSchedule, schedule } from './schedule';
-import { system } from './system';
+import { formatSchedule, scheduleSystems } from './schedule';
+import { system, type UnknownSystem } from './system';
 
 describe('schedule', () => {
   it('creates a schedule based on system dependencies', async () => {
@@ -41,16 +41,16 @@ describe('schedule', () => {
     });
 
     const ecsInstance = ecs([position, velocity]);
-    const gameSchedule = await schedule(
+    const schedule = await scheduleSystems(
       [systemA, systemB, systemC],
       ecsInstance,
       {},
     );
 
-    expect(gameSchedule.steps.length).toBe(3);
-    expect(Array.from(gameSchedule.steps[0])[0]).toBe(systemA);
-    expect(Array.from(gameSchedule.steps[1])[0]).toBe(systemB);
-    expect(Array.from(gameSchedule.steps[2])[0]).toBe(systemC);
+    expect(schedule.steps.length).toBe(3);
+    expect(Array.from(schedule.steps[0])[0]).toBe(systemA);
+    expect(Array.from(schedule.steps[1])[0]).toBe(systemB);
+    expect(Array.from(schedule.steps[2])[0]).toBe(systemC);
   });
 
   it('creates a schedule with multiple systems per step when possible', async () => {
@@ -87,18 +87,18 @@ describe('schedule', () => {
     });
 
     const ecsInstance = ecs([position, velocity]);
-    const gameSchedule = await schedule(
+    const schedule = await scheduleSystems(
       [systemA, systemB, systemC],
       ecsInstance,
       {},
     );
 
-    expect(gameSchedule.steps.length).toBe(2);
-    expect(gameSchedule.steps[0].size).toBe(2); // systemA and systemB in same step
-    expect(gameSchedule.steps[1].size).toBe(1); // only systemC in second step
-    expect(gameSchedule.steps[0].has(systemA)).toBe(true);
-    expect(gameSchedule.steps[0].has(systemB)).toBe(true);
-    expect(gameSchedule.steps[1].has(systemC)).toBe(true);
+    expect(schedule.steps.length).toBe(2);
+    expect(schedule.steps[0].size).toBe(2); // systemA and systemB in same step
+    expect(schedule.steps[1].size).toBe(1); // only systemC in second step
+    expect(schedule.steps[0].has(systemA as UnknownSystem)).toBe(true);
+    expect(schedule.steps[0].has(systemB as UnknownSystem)).toBe(true);
+    expect(schedule.steps[1].has(systemC as UnknownSystem)).toBe(true);
   });
 
   it('executes systems in dependency order', async () => {
@@ -138,12 +138,12 @@ describe('schedule', () => {
     const ecsInstance = ecs([position]);
     ecsInstance.add({ position: 1 });
 
-    const gameSchedule = await schedule(
+    const schedule = await scheduleSystems(
       [systemC, systemA, systemB],
       ecsInstance,
       {},
     );
-    gameSchedule.update({ dt: 0.1 });
+    schedule.update({ dt: 0.1 });
 
     expect(executionOrder).toEqual(['systemA', 'systemB', 'systemC']);
   });
@@ -182,9 +182,9 @@ describe('schedule', () => {
 
     const ecsInstance = ecs([position]);
 
-    await schedule([systemA, systemB], ecsInstance, {
-      scale: 2,
+    await scheduleSystems([systemA, systemB], ecsInstance, {
       length: 5,
+      scale: 2,
     });
 
     expect(initSharedA).toHaveBeenCalledWith(
@@ -224,10 +224,10 @@ describe('schedule', () => {
     const ecsInstance = ecs([position]);
     ecsInstance.add({ position: 1 });
 
-    const gameSchedule = await schedule([systemA, systemB], ecsInstance, {});
+    const schedule = await scheduleSystems([systemA, systemB], ecsInstance, {});
 
     const params = { dt: 0.1, multiplier: 2 };
-    gameSchedule.update(params);
+    schedule.update(params);
 
     expect(updateFnA).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -242,17 +242,22 @@ describe('schedule', () => {
     );
   });
 
-  it('properly cleans up all system handles', async () => {
+  it('cleans up shared resources', async () => {
     const position = component('position', z.number());
 
-    const stopA = jest.fn();
-    const stopB = jest.fn();
+    const destroyA = jest.fn();
+    const destroyB = jest.fn();
 
     const systemA = system({
       name: 'systemA',
       query: query().has(position),
       params: z.object({ dt: z.number() }),
       onUpdated: jest.fn(),
+      shared: {
+        initParams: z.object({}),
+        create: async () => ({ hello: 'world' }),
+        destroy: destroyA,
+      },
     });
 
     const systemB = system({
@@ -260,30 +265,20 @@ describe('schedule', () => {
       query: query().has(position),
       params: z.object({ dt: z.number() }),
       onUpdated: jest.fn(),
+      shared: {
+        initParams: z.object({}),
+        create: async () => ({ hello: 'world' }),
+        destroy: destroyB,
+      },
     });
 
     const ecsInstance = ecs([position]);
 
-    // Mock implementation to test cleanup
-    jest.spyOn(systemA, 'observe').mockImplementation(async () => ({
-      ecs: ecsInstance,
-      observer: {} as any,
-      update: jest.fn(),
-      stop: stopA,
-    }));
+    const schedule = await scheduleSystems([systemA, systemB], ecsInstance, {});
+    await schedule.stop();
 
-    jest.spyOn(systemB, 'observe').mockImplementation(async () => ({
-      ecs: ecsInstance,
-      observer: {} as any,
-      update: jest.fn(),
-      stop: stopB,
-    }));
-
-    const gameSchedule = await schedule([systemA, systemB], ecsInstance, {});
-    await gameSchedule.stop();
-
-    expect(stopA).toHaveBeenCalled();
-    expect(stopB).toHaveBeenCalled();
+    expect(destroyA).toHaveBeenCalled();
+    expect(destroyB).toHaveBeenCalled();
   });
 
   it('throws error for circular dependencies', async () => {
@@ -305,13 +300,13 @@ describe('schedule', () => {
     });
 
     // Create circular dependency: A → B → A
-    (systemA as any).deps = [systemB];
+    systemA.deps = [systemB];
 
     const ecsInstance = ecs([position]);
 
-    await expect(schedule([systemA, systemB], ecsInstance, {})).rejects.toThrow(
-      'Invalid dependency graph',
-    );
+    await expect(
+      scheduleSystems([systemA, systemB], ecsInstance, {}),
+    ).rejects.toThrow('Invalid dependency graph');
   });
 
   it('formats a schedule into a readable string', async () => {
@@ -333,9 +328,9 @@ describe('schedule', () => {
     });
 
     const ecsInstance = ecs([position]);
-    const gameSchedule = await schedule([systemA, systemB], ecsInstance, {});
+    const schedule = await scheduleSystems([systemA, systemB], ecsInstance, {});
 
-    const formatted = formatSchedule(gameSchedule);
+    const formatted = formatSchedule(schedule);
     expect(formatted).toBe('Step 0: systemA\nStep 1: systemB');
   });
 });

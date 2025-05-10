@@ -1,27 +1,15 @@
 import type { ZodType } from 'zod';
 import type { ECS, EntityLike } from './ecs';
-import { type Observer, observe } from './observe';
+import { observe } from './observe';
 import type { Query } from './query';
 
-export type AnySystem = System<any, any, any, any, any, any>;
-
-export type SystemInitParams<TSystem extends AnySystem> =
-  TSystem extends System<any, any, infer TInitParams, any, any, any>
-    ? TInitParams
-    : never;
-
-export type SystemUpdateParams<TSystem extends AnySystem> =
-  TSystem extends System<any, any, any, infer TUpdateParams, any, any>
-    ? TUpdateParams
-    : never;
-
-export type SystemConfig<
+export type System<
   TInput extends EntityLike,
   TOutput extends TInput,
   TInitParams extends Record<string, unknown>,
   TUpdateParams extends Record<string, unknown>,
   TShared,
-  TDerived = void,
+  TDerived,
 > = {
   /** Human-readable name for debugging */
   name?: string;
@@ -77,168 +65,161 @@ export type SystemConfig<
   }) => void;
 };
 
-export type SystemHandle<
-  TInput extends EntityLike,
-  TOutput extends TInput,
-  TUpdateParams extends Record<string, unknown>,
-> = {
-  ecs: ECS<TInput>;
-  observer: Observer<TInput, TOutput, TUpdateParams>;
+export type AnySystem = System<any, any, any, any, any, any>;
+
+export type UnknownSystem = System<
+  EntityLike,
+  EntityLike,
+  Record<string, unknown>,
+  Record<string, unknown>,
+  unknown,
+  unknown
+>;
+
+export type SystemInitParams<TSystem extends AnySystem> =
+  TSystem extends System<any, any, infer TInitParams, any, any, any>
+    ? TInitParams
+    : never;
+
+export type SystemUpdateParams<TSystem extends AnySystem> =
+  TSystem extends System<any, any, any, infer TUpdateParams, any, any>
+    ? TUpdateParams
+    : never;
+
+export type SystemHandle<TUpdateParams extends Record<string, unknown>> = {
   /** Update the system with the given parameters */
   update: (params: TUpdateParams) => void;
   /** Stop observing the system and destroy all resources */
   stop: () => Promise<void>;
 };
 
-export class System<
+export async function attachSystem<
   TInput extends EntityLike,
   TOutput extends TInput,
   TInitParams extends Record<string, unknown>,
   TUpdateParams extends Record<string, unknown>,
   TShared,
   TDerived,
-> {
-  readonly config: SystemConfig<
+>(
+  system: System<
     TInput,
     TOutput,
     TInitParams,
     TUpdateParams,
     TShared,
     TDerived
-  >;
+  >,
+  ecs: ECS<TInput>,
+  initParams: TInitParams,
+): Promise<SystemHandle<TUpdateParams>> {
+  const {
+    shared: configShared,
+    derived: configDerived,
+    onPreUpdate,
+    onUpdated,
+    onPostUpdate,
+  } = system;
 
-  readonly name: string;
-  readonly deps: System<any, any, any, any, any, any>[];
+  const [shared, destroyShared] = await (async () => {
+    if (!configShared) return [null as TShared, null];
 
-  constructor(
-    config: SystemConfig<
-      TInput,
-      TOutput,
-      TInitParams,
-      TUpdateParams,
-      TShared,
-      TDerived
-    >,
-  ) {
-    this.config = config;
-    this.name = config.name || 'unnamed';
-    this.deps = config.deps || [];
-  }
+    const shared = await configShared.create({ initParams });
+    const destroyShared = () => configShared.destroy?.({ initParams, shared });
+    return [shared as TShared, destroyShared];
+  })();
 
-  async observe(
-    ecs: ECS<TInput>,
-    initParams: TInitParams,
-  ): Promise<SystemHandle<TInput, TOutput, TUpdateParams>> {
-    const {
-      shared: configShared,
-      derived: configDerived,
-      onPreUpdate,
-      onUpdated,
-      onPostUpdate,
-    } = this.config;
+  const derived = new Map<TOutput, TDerived>();
 
-    const [shared, destroyShared] = await (async () => {
-      if (!configShared) return [null as TShared, null];
-
-      const shared = await configShared.create({ initParams });
-      const destroyShared = () =>
-        configShared.destroy?.({ initParams, shared });
-      return [shared as TShared, destroyShared];
-    })();
-
-    const derived = new Map<TOutput, TDerived>();
-
-    const observer = observe({
-      query: this.config.query,
-      params: this.config.params,
-      on: {
-        preUpdate(params: TUpdateParams) {
-          onPreUpdate?.({ params, shared });
-        },
-
-        matched(entity) {
-          if (!configDerived) {
-            return;
-          }
-
-          derived.set(
-            entity,
-            configDerived.create({
-              initParams,
-              shared,
-              entity,
-            }),
-          );
-        },
-
-        updated(entity, params) {
-          if (!onUpdated) {
-            return;
-          }
-
-          let derivedResources: TDerived;
-          if (configDerived) {
-            if (!derived.has(entity)) {
-              throw new Error('Derived resource not found for updated entity');
-            }
-            derivedResources = derived.get(entity) as TDerived;
-          } else {
-            derivedResources = undefined as TDerived;
-          }
-
-          onUpdated({
-            params,
-            shared,
-            derived: derivedResources,
-            entity,
-          });
-        },
-
-        unmatched(entity) {
-          if (!configDerived) {
-            return;
-          }
-
-          const derivedResource = derived.get(entity);
-          if (!derivedResource) {
-            throw new Error('Derived resource not found for unmatched entity');
-          }
-
-          configDerived.destroy?.({
-            initParams,
-            shared,
-            derived: derivedResource,
-          });
-
-          derived.delete(entity);
-        },
-
-        postUpdate(params: TUpdateParams) {
-          onPostUpdate?.({ params, shared });
-        },
+  const observer = observe({
+    query: system.query,
+    params: system.params,
+    on: {
+      preUpdate(params: TUpdateParams) {
+        onPreUpdate?.({ params, shared });
       },
-    });
 
-    const update = (params: TUpdateParams) => {
-      observer.update(ecs, params);
-    };
+      matched(entity) {
+        if (!configDerived) {
+          return;
+        }
 
-    const stop = async () => {
-      observer.stop();
-      if (configDerived) {
-        for (const resource of derived.values()) {
-          configDerived.destroy?.({
+        derived.set(
+          entity,
+          configDerived.create({
             initParams,
             shared,
-            derived: resource,
-          });
-        }
-      }
-      await destroyShared?.();
-    };
+            entity,
+          }),
+        );
+      },
 
-    return { ecs, observer, update, stop };
-  }
+      updated(entity, params) {
+        if (!onUpdated) {
+          return;
+        }
+
+        let derivedResources: TDerived;
+        if (configDerived) {
+          if (!derived.has(entity)) {
+            throw new Error('Derived resource not found for updated entity');
+          }
+          derivedResources = derived.get(entity) as TDerived;
+        } else {
+          derivedResources = undefined as TDerived;
+        }
+
+        onUpdated({
+          params,
+          shared,
+          derived: derivedResources,
+          entity,
+        });
+      },
+
+      unmatched(entity) {
+        if (!configDerived) {
+          return;
+        }
+
+        if (!derived.has(entity)) {
+          throw new Error('Derived resource not found for unmatched entity');
+        }
+        const derivedResource = derived.get(entity) as TDerived;
+
+        configDerived.destroy?.({
+          initParams,
+          shared,
+          derived: derivedResource,
+        });
+
+        derived.delete(entity);
+      },
+
+      postUpdate(params: TUpdateParams) {
+        onPostUpdate?.({ params, shared });
+      },
+    },
+  });
+
+  const update = (params: TUpdateParams) => {
+    observer.update(ecs, params);
+  };
+
+  const stop = async () => {
+    observer.stop();
+    if (configDerived) {
+      for (const resource of derived.values()) {
+        configDerived.destroy?.({
+          initParams,
+          shared,
+          derived: resource,
+        });
+      }
+    }
+    await destroyShared?.();
+  };
+
+  return { update, stop };
 }
 
 export function system<
@@ -249,7 +230,7 @@ export function system<
   TShared,
   TDerived,
 >(
-  config: SystemConfig<
+  config: System<
     TInput,
     TOutput,
     TInitParams,
@@ -258,5 +239,5 @@ export function system<
     TDerived
   >,
 ): System<TInput, TOutput, TInitParams, TUpdateParams, TShared, TDerived> {
-  return new System(config);
+  return config;
 }

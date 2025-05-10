@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { component } from './component';
 import { ecs } from './ecs';
 import { query } from './query';
-import { system } from './system';
+import { attachSystem, system } from './system';
 
 describe('system', () => {
   it('creates a basic system that processes entities', async () => {
@@ -33,7 +33,7 @@ describe('system', () => {
     });
     e.add(entity);
 
-    const handle = await movementSystem.observe(e, {});
+    const handle = await attachSystem(movementSystem, e, {});
 
     handle.update({ dt: 0.1 });
 
@@ -84,7 +84,7 @@ describe('system', () => {
     e.add(movingEntity);
     e.add(staticEntity);
 
-    const handle = await movementSystem.observe(e, {});
+    const handle = await attachSystem(movementSystem, e, {});
 
     handle.update({ dt: 0.1 });
 
@@ -124,7 +124,7 @@ describe('system', () => {
     e.add(e.entity({ position: { x: 1, y: 2 } }));
     e.add(e.entity({ position: { x: 3, y: 4 } }));
 
-    const handle = await testSystem.observe(e, {});
+    const handle = await attachSystem(testSystem, e, {});
 
     handle.update({ value: 42 });
 
@@ -142,6 +142,8 @@ describe('system', () => {
   it('handles shared resources', async () => {
     const counter = component('counter', z.number());
 
+    const destroy = jest.fn();
+
     const counterSystem = system({
       name: 'counter',
       query: query().has(counter),
@@ -152,7 +154,7 @@ describe('system', () => {
           total: initParams.initialTotal,
           updates: 0,
         }),
-        destroy: jest.fn(),
+        destroy,
       },
       onPreUpdate: ({ shared }) => {
         shared.updates++;
@@ -169,7 +171,7 @@ describe('system', () => {
     e.add(entity1);
     e.add(entity2);
 
-    const handle = await counterSystem.observe(e, { initialTotal: 100 });
+    const handle = await attachSystem(counterSystem, e, { initialTotal: 100 });
 
     handle.update({ increment: 5 });
     handle.update({ increment: 10 });
@@ -178,7 +180,7 @@ describe('system', () => {
     expect(entity2.counter).toBe(15); // 5 + 10
 
     await handle.stop();
-    expect(counterSystem.config.shared?.destroy).toHaveBeenCalled();
+    expect(destroy).toHaveBeenCalled();
   });
 
   it('creates and manages derived resources for entities', async () => {
@@ -232,7 +234,7 @@ describe('system', () => {
     });
     const id = e.add(entity);
 
-    const handle = await trackingSystem.observe(e, {});
+    const handle = await attachSystem(trackingSystem, e, {});
 
     handle.update({ dt: 1 });
     handle.update({ dt: 1 });
@@ -255,9 +257,9 @@ describe('system', () => {
     );
     const active = component('active', z.boolean());
 
-    const matchedFn = jest.fn();
-    const unmatchedFn = jest.fn();
-    const updatedFn = jest.fn();
+    const create = jest.fn();
+    const destroy = jest.fn();
+    const onUpdated = jest.fn();
 
     const activeSystem = system({
       name: 'active',
@@ -265,14 +267,15 @@ describe('system', () => {
         .has(position, active)
         .where(({ active }) => active === true),
       params: z.object({}),
-      onUpdated: updatedFn,
+      derived: {
+        create,
+        destroy,
+      },
+      onUpdated,
     });
 
     const e = ecs([position, active]);
-    const observer = (await activeSystem.observe(e, {})).observer;
-
-    observer.matched.on(matchedFn);
-    observer.unmatched.on(unmatchedFn);
+    const handle = await attachSystem(activeSystem, e, {});
 
     const entity = e.entity({
       position: { x: 0, y: 0 },
@@ -280,23 +283,25 @@ describe('system', () => {
     });
     const id = e.add(entity);
 
-    observer.update(e, {});
-    expect(matchedFn).toHaveBeenCalledTimes(1);
-    expect(updatedFn).toHaveBeenCalledTimes(1);
+    handle.update({});
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(onUpdated).toHaveBeenCalledTimes(1);
 
     entity.active = false;
-    observer.update(e, {});
-    expect(unmatchedFn).toHaveBeenCalledTimes(1);
-    expect(updatedFn).toHaveBeenCalledTimes(1);
+    handle.update({});
+    expect(destroy).toHaveBeenCalledTimes(1);
+    expect(onUpdated).toHaveBeenCalledTimes(1);
 
     entity.active = true;
-    observer.update(e, {});
-    expect(matchedFn).toHaveBeenCalledTimes(2);
-    expect(updatedFn).toHaveBeenCalledTimes(2);
+    handle.update({});
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(onUpdated).toHaveBeenCalledTimes(2);
 
     e.remove(id);
-    observer.update(e, {});
-    expect(unmatchedFn).toHaveBeenCalledTimes(2);
+    handle.update({});
+    expect(destroy).toHaveBeenCalledTimes(2);
+
+    await handle.stop();
   });
 
   it('accepts valid parameters', async () => {
@@ -317,7 +322,7 @@ describe('system', () => {
     const e = ecs([test]);
     e.add(e.entity({ test: true }));
 
-    const handle = await testSystem.observe(e, {});
+    const handle = await attachSystem(testSystem, e, {});
 
     handle.update({ required: 'value' });
     handle.update({ required: 'value', optional: 42 });

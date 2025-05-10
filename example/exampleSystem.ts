@@ -188,22 +188,20 @@ export async function makeExample({ n }: { n: number }) {
     tether,
   ]);
 
-  // Create a list of all systems
-  const systems = [
-    gravitySystem,
-    tetheringSystem,
-    kinematicsSystem,
-    wallsSystem,
-    drawBgSystem,
-    drawTetherSystem,
-    drawColliderSystem,
-  ];
-
   // Create a schedule based on system dependencies
-  const gameSchedule = await zecs.schedule(systems, ecs, {});
-
-  // Schedule order information is available via:
-  // formatSchedule(gameSchedule)
+  const schedule = await zecs.scheduleSystems(
+    [
+      gravitySystem,
+      tetheringSystem,
+      kinematicsSystem,
+      wallsSystem,
+      drawBgSystem,
+      drawTetherSystem,
+      drawColliderSystem,
+    ],
+    ecs,
+    {},
+  );
 
   // Create entities
   for (let i = 0; i < n; ++i) {
@@ -231,7 +229,7 @@ export async function makeExample({ n }: { n: number }) {
   // Function to update all systems according to the schedule
   const update = (params: { dt: number; ctx?: CanvasRenderingContext2D }) => {
     // The schedule will execute all systems in the correct dependency order
-    gameSchedule.update({
+    schedule.update({
       g: 9.8,
       dt: params.dt,
       ctx: params.ctx,
@@ -240,7 +238,7 @@ export async function makeExample({ n }: { n: number }) {
 
   // Clean up function - the schedule handles stopping all system handles
   const cleanup = async () => {
-    await gameSchedule.stop();
+    await schedule.stop();
   };
 
   return { ecs, update, cleanup };

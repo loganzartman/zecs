@@ -1,25 +1,20 @@
-import { behavior } from './behavior';
 import { component } from './component';
 import { ecs } from './ecs';
 import { event } from './event';
 import { keyLookup } from './keyLookup';
 import { observe } from './observe';
-import { plan } from './plan';
 import { query } from './query';
-import { schedule } from './schedule';
+import { scheduleSystems } from './schedule';
 import { system } from './system';
 
 export * from './component';
+export * from './query';
 export * from './ecs';
 export * from './event';
 export * from './keyLookup';
 export * from './observe';
-export * from './query';
-export * from './behavior';
-export * from './plan';
-export * from './schedule';
-export { formatSchedule } from './schedule';
 export * from './system';
+export * from './schedule';
 
 export const zecs = {
   component,
@@ -28,10 +23,8 @@ export const zecs = {
   keyLookup,
   observe,
   query,
-  behavior,
-  plan,
-  schedule,
   system,
+  scheduleSystems,
 };
 
 export default zecs;
