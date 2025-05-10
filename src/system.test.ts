@@ -147,9 +147,9 @@ describe('system', () => {
     const counterSystem = system({
       name: 'counter',
       query: query().has(counter),
+      initParams: z.object({ initialTotal: z.number() }),
       params: z.object({ increment: z.number() }),
       shared: {
-        initParams: z.object({ initialTotal: z.number() }),
         create: ({ initParams }) => ({
           total: initParams.initialTotal,
           updates: 0,
@@ -206,7 +206,6 @@ describe('system', () => {
       query: query().has(position, velocity),
       params: z.object({ dt: z.number() }),
       shared: {
-        initParams: z.object({}),
         create: () => ({ updates: 0 }),
         destroy: () => {},
       },

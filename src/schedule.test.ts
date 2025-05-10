@@ -157,9 +157,9 @@ describe('schedule', () => {
     const systemA = system({
       name: 'systemA',
       query: query().has(position),
+      initParams: z.object({ scale: z.number() }),
       params: z.object({ dt: z.number() }),
       shared: {
-        initParams: z.object({ scale: z.number() }),
         create: async ({ initParams }) => {
           initSharedA(initParams);
           return { scale: initParams.scale };
@@ -170,9 +170,9 @@ describe('schedule', () => {
     const systemB = system({
       name: 'systemB',
       query: query().has(position),
+      initParams: z.object({ length: z.number() }),
       params: z.object({ dt: z.number() }),
       shared: {
-        initParams: z.object({ length: z.number() }),
         create: async ({ initParams }) => {
           initSharedB(initParams);
           return { length: initParams.length };
@@ -254,7 +254,6 @@ describe('schedule', () => {
       params: z.object({ dt: z.number() }),
       onUpdated: jest.fn(),
       shared: {
-        initParams: z.object({}),
         create: async () => ({ hello: 'world' }),
         destroy: destroyA,
       },
@@ -266,7 +265,6 @@ describe('schedule', () => {
       params: z.object({ dt: z.number() }),
       onUpdated: jest.fn(),
       shared: {
-        initParams: z.object({}),
         create: async () => ({ hello: 'world' }),
         destroy: destroyB,
       },

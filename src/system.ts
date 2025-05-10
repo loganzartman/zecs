@@ -1,4 +1,4 @@
-import type { ZodType } from 'zod';
+import { z, type ZodType } from 'zod';
 import type { ECS, EntityLike } from './ecs';
 import { observe } from './observe';
 import type { Query } from './query';
@@ -15,14 +15,14 @@ export type System<
   name?: string;
   /** Query that matches entities to be processed by this system */
   query: Query<TInput, TOutput>;
+  /** Parameters schema for initializing the system */
+  initParams?: ZodType<TInitParams>;
   /** Parameters schema which must be passed to update() */
-  params: ZodType<TUpdateParams>;
+  params?: ZodType<TUpdateParams>;
   /** Systems that must be updated before this one */
   deps?: System<any, any, any, any, any, any>[];
   /** Resources shared across all entities in the system */
   shared?: {
-    /** Parameters schema for initializing the shared resources */
-    initParams: ZodType<TInitParams>;
     /** Create shared resources for the system */
     create: (p: { initParams: TInitParams }) => TShared | Promise<TShared>;
     /** Destroy shared resources for the system */
@@ -132,7 +132,9 @@ export async function attachSystem<
 
   const observer = observe({
     query: system.query,
-    params: system.params,
+    params:
+      system.params ??
+      (z.record(z.string(), z.unknown()) as ZodType<TUpdateParams>),
     on: {
       preUpdate(params: TUpdateParams) {
         onPreUpdate?.({ params, shared });
