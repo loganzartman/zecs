@@ -9,6 +9,8 @@
   "type": "module",
   "scripts": {
     "build": "parcel build",
+    "watch": "parcel watch",
+    "clean": "rm -rf dist .parcel-cache",
     "types": "tsc --noEmit --project tsconfig.json",
     "test": "jest",
     "example": "parcel example/example.html",
@@ -28,15 +30,17 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
-    "@parcel/packager-ts": "2.13.2",
-    "@parcel/transformer-typescript-types": "2.13.2",
+    "@parcel/bundler-library": "2.14.4",
+    "@parcel/config-default": "2.14.4",
+    "@parcel/packager-ts": "2.14.4",
+    "@parcel/transformer-typescript-types": "2.14.4",
     "@types/jest": "^29.5.14",
     "jest": "^29.7.0",
     "mitata": "^1.0.34",
-    "parcel": "^2.13.2",
+    "parcel": "2.14.4",
     "ts-jest": "^29.2.5",
     "tsx": "^4.19.3",
-    "typescript": "^5.7.2",
+    "typescript": "5.8.3",
     "zod": "^3.23.8"
   }
 }
