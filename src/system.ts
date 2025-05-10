@@ -38,7 +38,7 @@ export type SystemConfig<
     /** Create shared resources for the system */
     create: (p: { initParams: TInitParams }) => TShared | Promise<TShared>;
     /** Destroy shared resources for the system */
-    destroy: (p: {
+    destroy?: (p: {
       initParams: TInitParams;
       shared: TShared;
     }) => void | Promise<void>;
@@ -52,7 +52,7 @@ export type SystemConfig<
       entity: TOutput;
     }) => TDerived;
     /** Destroy derived resources for an entity */
-    destroy: (p: {
+    destroy?: (p: {
       initParams: TInitParams;
       shared: TShared;
       derived: TDerived;
@@ -141,7 +141,8 @@ export class System<
       if (!configShared) return [null as TShared, null];
 
       const shared = await configShared.create({ initParams });
-      const destroyShared = () => configShared.destroy({ initParams, shared });
+      const destroyShared = () =>
+        configShared.destroy?.({ initParams, shared });
       return [shared as TShared, destroyShared];
     })();
 
@@ -203,7 +204,7 @@ export class System<
             throw new Error('Derived resource not found for unmatched entity');
           }
 
-          configDerived.destroy({
+          configDerived.destroy?.({
             initParams,
             shared,
             derived: derivedResource,
@@ -226,7 +227,7 @@ export class System<
       observer.stop();
       if (configDerived) {
         for (const resource of derived.values()) {
-          configDerived.destroy({
+          configDerived.destroy?.({
             initParams,
             shared,
             derived: resource,
@@ -245,8 +246,8 @@ export function system<
   TOutput extends TInput,
   TInitParams extends Record<string, unknown>,
   TUpdateParams extends Record<string, unknown>,
-  TShared = void,
-  TDerived = void,
+  TShared,
+  TDerived,
 >(
   config: SystemConfig<
     TInput,

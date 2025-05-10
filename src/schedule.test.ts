@@ -148,6 +148,53 @@ describe('schedule', () => {
     expect(executionOrder).toEqual(['systemA', 'systemB', 'systemC']);
   });
 
+  it('initializes shared resources for each system', async () => {
+    const position = component('position', z.number());
+
+    const initSharedA = jest.fn();
+    const initSharedB = jest.fn();
+
+    const systemA = system({
+      name: 'systemA',
+      query: query().has(position),
+      params: z.object({ dt: z.number() }),
+      shared: {
+        initParams: z.object({ scale: z.number() }),
+        create: async ({ initParams }) => {
+          initSharedA(initParams);
+          return { scale: initParams.scale };
+        },
+      },
+    });
+
+    const systemB = system({
+      name: 'systemB',
+      query: query().has(position),
+      params: z.object({ dt: z.number() }),
+      shared: {
+        initParams: z.object({ length: z.number() }),
+        create: async ({ initParams }) => {
+          initSharedB(initParams);
+          return { length: initParams.length };
+        },
+      },
+    });
+
+    const ecsInstance = ecs([position]);
+
+    await schedule([systemA, systemB], ecsInstance, {
+      scale: 2,
+      length: 5,
+    });
+
+    expect(initSharedA).toHaveBeenCalledWith(
+      expect.objectContaining({ scale: 2 }),
+    );
+    expect(initSharedB).toHaveBeenCalledWith(
+      expect.objectContaining({ length: 5 }),
+    );
+  });
+
   it('uses shared parameters for all systems', async () => {
     const position = component('position', z.number());
 
