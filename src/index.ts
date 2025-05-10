@@ -6,6 +6,7 @@ import { keyLookup } from './keyLookup';
 import { observe } from './observe';
 import { plan } from './plan';
 import { query } from './query';
+import { schedule } from './schedule';
 import { system } from './system';
 
 export * from './component';
@@ -16,6 +17,8 @@ export * from './observe';
 export * from './query';
 export * from './behavior';
 export * from './plan';
+export * from './schedule';
+export { formatSchedule } from './schedule';
 export * from './system';
 
 export const zecs = {
@@ -27,6 +30,7 @@ export const zecs = {
   query,
   behavior,
   plan,
+  schedule,
   system,
 };
 

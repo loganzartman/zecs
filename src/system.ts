@@ -3,6 +3,18 @@ import type { ECS, EntityLike } from './ecs';
 import { type Observer, observe } from './observe';
 import type { Query } from './query';
 
+export type AnySystem = System<any, any, any, any, any, any>;
+
+export type SystemInitParams<TSystem extends AnySystem> =
+  TSystem extends System<any, any, infer TInitParams, any, any, any>
+    ? TInitParams
+    : never;
+
+export type SystemUpdateParams<TSystem extends AnySystem> =
+  TSystem extends System<any, any, any, infer TUpdateParams, any, any>
+    ? TUpdateParams
+    : never;
+
 export type SystemConfig<
   TInput extends EntityLike,
   TOutput extends TInput,
@@ -17,6 +29,8 @@ export type SystemConfig<
   query: Query<TInput, TOutput>;
   /** Parameters schema which must be passed to update() */
   params: ZodType<TUpdateParams>;
+  /** Systems that must be updated before this one */
+  deps?: System<any, any, any, any, any, any>[];
   /** Resources shared across all entities in the system */
   shared?: {
     /** Parameters schema for initializing the shared resources */
@@ -93,6 +107,9 @@ export class System<
     TDerived
   >;
 
+  readonly name: string;
+  readonly deps: System<any, any, any, any, any, any>[];
+
   constructor(
     config: SystemConfig<
       TInput,
@@ -104,6 +121,8 @@ export class System<
     >,
   ) {
     this.config = config;
+    this.name = config.name || 'unnamed';
+    this.deps = config.deps || [];
   }
 
   async observe(

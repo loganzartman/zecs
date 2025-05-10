@@ -48,6 +48,7 @@ const gravitySystem = zecs.system({
   name: 'gravity',
   query: zecs.query().has(acceleration),
   params: z.object({ g: z.number(), dt: z.number() }),
+  deps: [], // No dependencies
   onUpdated: ({ entity, params }) => {
     entity.acceleration.y = params.g * params.dt;
   },
@@ -57,6 +58,7 @@ const tetheringSystem = zecs.system({
   name: 'tethering',
   query: zecs.query().has(tether, position, acceleration, mass),
   params: z.object({ dt: z.number() }),
+  deps: [], // No dependencies
   onUpdated: ({ entity, params }) => {
     const { tether, position, acceleration, mass } = entity;
     const dx = tether.x - position.x;
@@ -78,6 +80,7 @@ const kinematicsSystem = zecs.system({
   name: 'kinematics',
   query: zecs.query().has(acceleration, velocity, position),
   params: z.object({ dt: z.number() }),
+  deps: [gravitySystem, tetheringSystem], // Depends on acceleration systems
   onUpdated: ({ entity, params }) => {
     const { acceleration, velocity, position } = entity;
     velocity.x += acceleration.x * params.dt;
@@ -95,6 +98,7 @@ const wallsSystem = zecs.system({
   name: 'walls',
   query: zecs.query().has(collider, position, velocity),
   params: z.object({ dt: z.number() }),
+  deps: [kinematicsSystem], // Depends on kinematics
   onUpdated: ({ entity }) => {
     const { collider, position, velocity } = entity;
 
@@ -123,6 +127,7 @@ const drawBgSystem = zecs.system({
     ctx: z.custom<CanvasRenderingContext2D>().optional(),
     dt: z.number(),
   }),
+  deps: [wallsSystem], // Draw after physics is done
   onPreUpdate: ({ params }) => {
     const { ctx } = params;
     if (!ctx) return;
@@ -138,6 +143,7 @@ const drawTetherSystem = zecs.system({
     ctx: z.custom<CanvasRenderingContext2D>().optional(),
     dt: z.number(),
   }),
+  deps: [drawBgSystem], // Draw after background
   onUpdated: ({ entity, params }) => {
     const { ctx } = params;
     if (!ctx) return;
@@ -159,6 +165,7 @@ const drawColliderSystem = zecs.system({
     ctx: z.custom<CanvasRenderingContext2D>().optional(),
     dt: z.number(),
   }),
+  deps: [drawTetherSystem], // Draw after tethers
   onUpdated: ({ entity, params }) => {
     const { ctx } = params;
     if (!ctx) return;
@@ -181,14 +188,22 @@ export async function makeExample({ n }: { n: number }) {
     tether,
   ]);
 
-  // Initialize all systems with empty init params (not using shared resources)
-  const gravityHandle = await gravitySystem.observe(ecs, {});
-  const tetheringHandle = await tetheringSystem.observe(ecs, {});
-  const kinematicsHandle = await kinematicsSystem.observe(ecs, {});
-  const wallsHandle = await wallsSystem.observe(ecs, {});
-  const drawBgHandle = await drawBgSystem.observe(ecs, {});
-  const drawTetherHandle = await drawTetherSystem.observe(ecs, {});
-  const drawColliderHandle = await drawColliderSystem.observe(ecs, {});
+  // Create a list of all systems
+  const systems = [
+    gravitySystem,
+    tetheringSystem,
+    kinematicsSystem,
+    wallsSystem,
+    drawBgSystem,
+    drawTetherSystem,
+    drawColliderSystem,
+  ];
+
+  // Create a schedule based on system dependencies
+  const gameSchedule = await zecs.schedule(systems, ecs, {});
+
+  // Schedule order information is available via:
+  // formatSchedule(gameSchedule)
 
   // Create entities
   for (let i = 0; i < n; ++i) {
@@ -213,33 +228,19 @@ export async function makeExample({ n }: { n: number }) {
     );
   }
 
-  // Function to update all systems manually in the right order
+  // Function to update all systems according to the schedule
   const update = (params: { dt: number; ctx?: CanvasRenderingContext2D }) => {
-    const { dt, ctx } = params;
-
-    // Update physics systems in dependency order
-    gravityHandle.update({ g: 9.8, dt });
-    tetheringHandle.update({ dt });
-    kinematicsHandle.update({ dt });
-    wallsHandle.update({ dt });
-
-    // Update rendering systems in dependency order
-    drawBgHandle.update({ ctx, dt });
-    drawTetherHandle.update({ ctx, dt });
-    drawColliderHandle.update({ ctx, dt });
+    // The schedule will execute all systems in the correct dependency order
+    gameSchedule.update({
+      g: 9.8,
+      dt: params.dt,
+      ctx: params.ctx,
+    });
   };
 
-  // Clean up function
+  // Clean up function - the schedule handles stopping all system handles
   const cleanup = async () => {
-    await Promise.all([
-      gravityHandle.stop(),
-      tetheringHandle.stop(),
-      kinematicsHandle.stop(),
-      wallsHandle.stop(),
-      drawBgHandle.stop(),
-      drawTetherHandle.stop(),
-      drawColliderHandle.stop(),
-    ]);
+    await gameSchedule.stop();
   };
 
   return { ecs, update, cleanup };

@@ -7,5 +7,12 @@
     "editor.codeActionsOnSave": {
       "source.fixAll.biome": "always"
     }
+  },
+  "github.copilot.enable": {
+    "*": true,
+    "plaintext": false,
+    "markdown": false,
+    "scminput": false,
+    "mdx": false
   }
 }
