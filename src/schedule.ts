@@ -1,14 +1,11 @@
-import { z } from 'zod';
 import type { ECS, EntityLike } from './ecs';
-import {
-  system,
-  type SystemUpdateParams,
-  type AnySystem,
-  type System,
-  type SystemHandle,
-  type SystemInitParams,
+import type {
+  SystemUpdateParams,
+  AnySystem,
+  System,
+  SystemHandle,
+  SystemInitParams,
 } from './system';
-import { query } from './query';
 
 type CombinedInitParams<TSystems extends AnySystem[]> = TSystems extends [
   infer TSystem extends AnySystem,
@@ -123,7 +120,7 @@ export class Schedule<
 
 export async function schedule<
   TEntity extends EntityLike,
-  TSystems extends System<Partial<TEntity>, any, any, any, any, any>[],
+  const TSystems extends AnySystem[],
 >(
   systems: TSystems,
   ecs: ECS<TEntity>,
@@ -160,25 +157,3 @@ function makeDependersMap<TSystems extends AnySystem[]>(
   }
   return dependersMap;
 }
-
-const s1 = system({
-  name: 's1',
-  query: query(),
-  params: z.object({ a: z.number() }),
-  shared: {
-    initParams: z.object({ a: z.number() }),
-    create() {},
-    destroy() {},
-  },
-});
-const s2 = system({
-  name: 's2',
-  query: query(),
-  params: z.object({ b: z.string() }),
-  shared: {
-    initParams: z.object({ b: z.string() }),
-    create() {},
-    destroy() {},
-  },
-});
-type X = CombinedInitParams<[typeof s1, typeof s2]>;
