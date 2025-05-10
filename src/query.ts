@@ -62,11 +62,8 @@ export class Query<TInput extends EntityLike, TOutput extends TInput> {
 
   count<TEntity extends TInput>(ecs: ECS<TEntity>): number {
     let count = 0;
-    for (const id in ecs.entities) {
-      const entity = ecs.entities[id];
-      if (this.filter(entity)) {
-        count++;
-      }
+    for (const _ of this.query(ecs)) {
+      count++;
     }
     return count;
   }
