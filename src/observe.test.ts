@@ -19,8 +19,7 @@ describe('observe', () => {
     observer.updated.on(updated);
     observer.unmatched.on(unmatched);
 
-    const entity = e.entity({ health: 10 });
-    const id = e.add(entity);
+    const entity = e.add({ health: 10 });
 
     observer.update(e);
     expect(matched).toHaveBeenCalledWith(entity, undefined);
@@ -32,7 +31,7 @@ describe('observe', () => {
     expect(updated).toHaveBeenCalledTimes(2);
     expect(unmatched).not.toHaveBeenCalled();
 
-    e.remove(id);
+    e.remove(entity);
     observer.update(e);
     expect(matched).toHaveBeenCalledTimes(1);
     expect(updated).toHaveBeenCalledTimes(2);
@@ -56,10 +55,8 @@ describe('observe', () => {
     observer.updated.on(updated);
     observer.unmatched.on(unmatched);
 
-    const entity1 = e.entity({ position: { x: 0, y: 0 } });
-    const entity2 = e.entity({ position: { x: 1, y: 1 } });
-    e.add(entity1);
-    e.add(entity2);
+    const entity1 = e.add({ position: { x: 0, y: 0 } });
+    const entity2 = e.add({ position: { x: 1, y: 1 } });
 
     observer.update(e);
     expect(matched).toHaveBeenCalledTimes(2);
@@ -82,8 +79,7 @@ describe('observe', () => {
     observer.updated.on(updated);
     observer.unmatched.on(unmatched);
 
-    const entity = e.entity({ health: 1 });
-    e.add(entity);
+    const entity = e.add({ health: 1 });
 
     observer.update(e);
     expect(matched).toHaveBeenCalledWith(entity, undefined);
@@ -117,8 +113,7 @@ describe('observe', () => {
     const offUpdated = observer.updated.on(updated);
     const offUnmatched = observer.unmatched.on(unmatched);
 
-    const entity = e.entity({ health: 10 });
-    e.add(entity);
+    const entity = e.add({ health: 10 });
 
     observer.update(e);
     expect(matched).toHaveBeenCalled();
@@ -146,8 +141,8 @@ describe('observe', () => {
     observer.updated.on(() => event('updated'));
     observer.postUpdate.on(() => event('postUpdate'));
 
-    e.add(e.entity({ health: 10 }));
-    e.add(e.entity({ health: 20 }));
+    e.add({ health: 10 });
+    e.add({ health: 20 });
 
     observer.update(e);
     expect(event.mock.calls).toEqual([
@@ -175,8 +170,7 @@ describe('observe', () => {
     });
 
     const e = ecs([health]);
-    const entity = e.entity({ health: 10 });
-    e.add(entity);
+    const entity = e.add({ health: 10 });
 
     observer.update(e);
     expect(matched).toHaveBeenCalledWith(entity, undefined);
@@ -194,8 +188,7 @@ describe('observe', () => {
 
     observer.updated.on(updated);
 
-    const entity = e.entity({ health: 10 });
-    e.add(entity);
+    const entity = e.add({ health: 10 });
 
     observer.update(e, 'test');
     expect(updated).toHaveBeenCalledWith(entity, 'test');

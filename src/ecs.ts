@@ -3,7 +3,7 @@ import packageJson from '../package.json';
 import type { Component } from './component';
 import type { Query } from './query';
 import { deserializeRefs, serializeRefs } from './serialization';
-import { type Empty, type Expand, entries, fromEntries } from './util';
+import { entries, type Expand, fromEntries } from './util';
 import { uuid } from './uuid';
 
 export type EntityLike = Record<string, unknown>;
@@ -76,17 +76,14 @@ export class ECS<TEntity extends EntityLike> {
     });
   }
 
-  entity(data: Partial<TEntity>): Partial<TEntity> {
-    return data;
-  }
+  add(entity: Partial<TEntity> & Record<string, unknown>): Partial<TEntity> {
+    let id = uuid();
 
-  add(
-    entity: Empty & Partial<TEntity & { [key: string]: unknown }>,
-  ): Partial<TEntity> {
-    let id: string;
-    do {
+    let i = 0;
+    while (id in this.entities) {
+      if (++i > 4) throw new Error('Failed to add entity: unlucky.');
       id = uuid();
-    } while (id in this.entities);
+    }
 
     return this.#trackEntity(entity, id);
   }

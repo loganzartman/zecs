@@ -27,11 +27,10 @@ describe('system', () => {
     });
 
     const e = ecs([position, velocity]);
-    const entity = e.entity({
+    const entity = e.add({
       position: { x: 0, y: 0 },
       velocity: { x: 1, y: 2 },
     });
-    e.add(entity);
 
     const handle = await attachSystem(movementSystem, e, {});
 
@@ -70,19 +69,16 @@ describe('system', () => {
 
     const e = ecs([position, velocity, staticFlag]);
 
-    const movingEntity = e.entity({
+    const movingEntity = e.add({
       position: { x: 0, y: 0 },
       velocity: { x: 1, y: 2 },
     });
 
-    const staticEntity = e.entity({
+    const staticEntity = e.add({
       position: { x: 5, y: 5 },
       velocity: { x: 1, y: 1 },
       staticFlag: true,
     });
-
-    e.add(movingEntity);
-    e.add(staticEntity);
 
     const handle = await attachSystem(movementSystem, e, {});
 
@@ -121,8 +117,8 @@ describe('system', () => {
     });
 
     const e = ecs([position]);
-    e.add(e.entity({ position: { x: 1, y: 2 } }));
-    e.add(e.entity({ position: { x: 3, y: 4 } }));
+    e.add({ position: { x: 1, y: 2 } });
+    e.add({ position: { x: 3, y: 4 } });
 
     const handle = await attachSystem(testSystem, e, {});
 
@@ -166,10 +162,8 @@ describe('system', () => {
     });
 
     const e = ecs([counter]);
-    const entity1 = e.entity({ counter: 0 });
-    const entity2 = e.entity({ counter: 0 });
-    e.add(entity1);
-    e.add(entity2);
+    const entity1 = e.add({ counter: 0 });
+    const entity2 = e.add({ counter: 0 });
 
     const handle = await attachSystem(counterSystem, e, { initialTotal: 100 });
 
@@ -227,11 +221,10 @@ describe('system', () => {
     });
 
     const e = ecs([position, velocity]);
-    const entity = e.entity({
+    const entity = e.add({
       position: { x: 0, y: 0 },
       velocity: { x: 3, y: 4 }, // 3-4-5 triangle for easy calculation
     });
-    const id = e.add(entity);
 
     const handle = await attachSystem(trackingSystem, e, {});
 
@@ -241,7 +234,7 @@ describe('system', () => {
     expect(createEach).toHaveBeenCalledTimes(1);
     expect(entity.position).toEqual({ x: 6, y: 8 });
 
-    e.remove(id);
+    e.remove(entity);
     handle.update({ dt: 1 });
 
     expect(destroyEach).toHaveBeenCalledTimes(1);
@@ -275,11 +268,10 @@ describe('system', () => {
     const e = ecs([position, active]);
     const handle = await attachSystem(activeSystem, e, {});
 
-    const entity = e.entity({
+    const entity = e.add({
       position: { x: 0, y: 0 },
       active: true,
     });
-    const id = e.add(entity);
 
     handle.update({});
     expect(create).toHaveBeenCalledTimes(1);
@@ -295,7 +287,7 @@ describe('system', () => {
     expect(create).toHaveBeenCalledTimes(2);
     expect(onUpdated).toHaveBeenCalledTimes(2);
 
-    e.remove(id);
+    e.remove(entity);
     handle.update({});
     expect(destroy).toHaveBeenCalledTimes(2);
 
@@ -318,7 +310,7 @@ describe('system', () => {
     });
 
     const e = ecs([test]);
-    e.add(e.entity({ test: true }));
+    e.add({ test: true });
 
     const handle = await attachSystem(testSystem, e, {});
 

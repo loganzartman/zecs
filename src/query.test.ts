@@ -207,10 +207,8 @@ describe('query', () => {
       const growable = planted.and(heightful);
 
       const myEcs = ecs([water, light, height]);
-      const entity = myEcs.entity({ light: 1, water: 1, height: 1 });
-      myEcs.add(entity);
-      const other = myEcs.entity({ light: 1, water: 1 });
-      myEcs.add(other);
+      const entity = myEcs.add({ light: 1, water: 1, height: 1 });
+      const other = myEcs.add({ light: 1, water: 1 });
 
       const result = [...growable.query(myEcs)];
       expect(result).toEqual([entity]);
