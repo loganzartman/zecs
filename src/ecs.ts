@@ -42,7 +42,7 @@ export class ECS<TEntity extends EntityLike> {
     this.components = components;
   }
 
-  #entitySchema() {
+  #entitySchema(): ZodType<Partial<TEntity>> {
     return z.object(
       fromEntries(
         entries(this.components).map(([name, component]) => [
@@ -50,7 +50,7 @@ export class ECS<TEntity extends EntityLike> {
           component.schema.optional(),
         ]),
       ),
-    );
+    ) as ZodType<Partial<TEntity>>;
   }
 
   #trackEntity<T extends object>(entity: T, id: string): T {

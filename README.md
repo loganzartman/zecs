@@ -6,7 +6,7 @@ tightly integrated with [zod](https://zod.dev/) for schemas
 
 `pnpm add zecs`
 
-`npm i --save zecs`
+`npm install --save zecs`
 
 ## usage example
 

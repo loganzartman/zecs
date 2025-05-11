@@ -3,6 +3,8 @@ import type { Component } from './component';
 import type { ECS, EntityLike } from './ecs';
 import type { Empty } from './util';
 
+type Expand<T> = T extends object ? { [K in keyof T]: T[K] } & {} : T;
+
 export type QueryInput<TQuery extends Query<any, any>> = TQuery extends Query<
   infer TInput,
   any
@@ -27,15 +29,23 @@ export class Query<TInput extends EntityLike, TOutput extends TInput> {
   has<TComponents extends Component<any, any>[]>(
     ...components: TComponents
   ): Query<
-    TInput & { [E in TComponents[number] as E['name']]: z.infer<E['schema']> },
-    TOutput & { [E in TComponents[number] as E['name']]: z.infer<E['schema']> }
+    Expand<
+      TInput & { [E in TComponents[number] as E['name']]: z.infer<E['schema']> }
+    >,
+    Expand<
+      TOutput & {
+        [E in TComponents[number] as E['name']]: z.infer<E['schema']>;
+      }
+    >
   > {
     return new Query(
       (
         entity: Partial<TInput>,
-      ): entity is TOutput & {
-        [E in TComponents[number] as E['name']]: z.infer<E['schema']>;
-      } =>
+      ): entity is Expand<
+        TOutput & {
+          [E in TComponents[number] as E['name']]: z.infer<E['schema']>;
+        }
+      > =>
         this.filter(entity) &&
         components.every((component) => component.name in entity),
     );
@@ -52,11 +62,8 @@ export class Query<TInput extends EntityLike, TOutput extends TInput> {
 
   count<TEntity extends TInput>(ecs: ECS<TEntity>): number {
     let count = 0;
-    for (const id in ecs.entities) {
-      const entity = ecs.entities[id];
-      if (this.filter(entity)) {
-        count++;
-      }
+    for (const _ of this.query(ecs)) {
+      count++;
     }
     return count;
   }
@@ -89,9 +96,11 @@ export class Query<TInput extends EntityLike, TOutput extends TInput> {
 
   and<TNewInput extends EntityLike, TNewOutput extends TNewInput>(
     query: Query<TNewInput, TNewOutput>,
-  ): Query<TInput & TNewInput, TOutput & TNewOutput> {
+  ): Query<Expand<TInput & TNewInput>, Expand<TOutput & TNewOutput>> {
     return new Query(
-      (entity: Partial<TInput & TNewInput>): entity is TOutput & TNewOutput =>
+      (
+        entity: Partial<TInput & TNewInput>,
+      ): entity is Expand<TOutput & TNewOutput> =>
         this.filter(entity) && query.filter(entity),
     );
   }

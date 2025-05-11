@@ -82,6 +82,14 @@ export class Observer<
     if (on?.unmatched) this.unmatched.on(on.unmatched);
   }
 
+  stop(): void {
+    this.matched.offAll();
+    this.preUpdate.offAll();
+    this.updated.offAll();
+    this.postUpdate.offAll();
+    this.unmatched.offAll();
+  }
+
   startUpdate(params: TParams): void {
     if (this.#updating.status) {
       throw new Error('Observer is already updating');

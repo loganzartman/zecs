@@ -7,5 +7,15 @@
     "editor.codeActionsOnSave": {
       "source.fixAll.biome": "always"
     }
+  },
+  "files.associations": {
+    ".parcelrc": "json"
+  },
+  "github.copilot.enable": {
+    "*": true,
+    "plaintext": false,
+    "markdown": false,
+    "scminput": false,
+    "mdx": false
   }
 }
