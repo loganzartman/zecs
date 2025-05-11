@@ -24,9 +24,12 @@ export type System<
   /** Resources shared across all entities in the system */
   shared?: {
     /** Create shared resources for the system */
-    create: (p: { initParams: TInitParams }) => TShared | Promise<TShared>;
+    create: (p: { ecs: ECS<TInput>; initParams: TInitParams }) =>
+      | TShared
+      | Promise<TShared>;
     /** Destroy shared resources for the system */
     destroy?: (p: {
+      ecs: ECS<TInput>;
       initParams: TInitParams;
       shared: TShared;
     }) => void | Promise<void>;
@@ -35,12 +38,14 @@ export type System<
   derived?: {
     /** Create derived resources for each matching entity */
     create: (p: {
+      ecs: ECS<TInput>;
       initParams: TInitParams;
       shared: TShared;
       entity: TOutput;
     }) => TDerived;
     /** Destroy derived resources for an entity */
     destroy?: (p: {
+      ecs: ECS<TInput>;
       initParams: TInitParams;
       shared: TShared;
       derived: TDerived;
@@ -48,11 +53,13 @@ export type System<
   };
   /** Called before processing any entities */
   onPreUpdate?: (p: {
+    ecs: ECS<TInput>;
     params: TUpdateParams;
     shared: TShared;
   }) => void;
   /** Called for each matching entity */
   onUpdated?: (p: {
+    ecs: ECS<TInput>;
     params: TUpdateParams;
     shared: TShared;
     derived: TDerived;
@@ -60,6 +67,7 @@ export type System<
   }) => void;
   /** Called after processing all entities */
   onPostUpdate?: (p: {
+    ecs: ECS<TInput>;
     params: TUpdateParams;
     shared: TShared;
   }) => void;
@@ -113,18 +121,19 @@ export async function attachSystem<
   initParams: TInitParams,
 ): Promise<SystemHandle<TUpdateParams>> {
   const {
-    shared: configShared,
-    derived: configDerived,
+    shared: sharedConfig,
+    derived: derivedConfig,
     onPreUpdate,
     onUpdated,
     onPostUpdate,
   } = system;
 
   const [shared, destroyShared] = await (async () => {
-    if (!configShared) return [null as TShared, null];
+    if (!sharedConfig) return [null as TShared, null];
 
-    const shared = await configShared.create({ initParams });
-    const destroyShared = () => configShared.destroy?.({ initParams, shared });
+    const shared = await sharedConfig.create({ ecs, initParams });
+    const destroyShared = () =>
+      sharedConfig.destroy?.({ ecs, initParams, shared });
     return [shared as TShared, destroyShared];
   })();
 
@@ -137,17 +146,18 @@ export async function attachSystem<
       (z.record(z.string(), z.unknown()) as ZodType<TUpdateParams>),
     on: {
       preUpdate(params: TUpdateParams) {
-        onPreUpdate?.({ params, shared });
+        onPreUpdate?.({ ecs, params, shared });
       },
 
       matched(entity) {
-        if (!configDerived) {
+        if (!derivedConfig) {
           return;
         }
 
         derived.set(
           entity,
-          configDerived.create({
+          derivedConfig.create({
+            ecs,
             initParams,
             shared,
             entity,
@@ -161,7 +171,7 @@ export async function attachSystem<
         }
 
         let derivedResources: TDerived;
-        if (configDerived) {
+        if (derivedConfig) {
           if (!derived.has(entity)) {
             throw new Error('Derived resource not found for updated entity');
           }
@@ -171,6 +181,7 @@ export async function attachSystem<
         }
 
         onUpdated({
+          ecs,
           params,
           shared,
           derived: derivedResources,
@@ -179,7 +190,7 @@ export async function attachSystem<
       },
 
       unmatched(entity) {
-        if (!configDerived) {
+        if (!derivedConfig) {
           return;
         }
 
@@ -188,7 +199,8 @@ export async function attachSystem<
         }
         const derivedResource = derived.get(entity) as TDerived;
 
-        configDerived.destroy?.({
+        derivedConfig.destroy?.({
+          ecs,
           initParams,
           shared,
           derived: derivedResource,
@@ -198,7 +210,7 @@ export async function attachSystem<
       },
 
       postUpdate(params: TUpdateParams) {
-        onPostUpdate?.({ params, shared });
+        onPostUpdate?.({ ecs, params, shared });
       },
     },
   });
@@ -209,9 +221,10 @@ export async function attachSystem<
 
   const stop = async () => {
     observer.stop();
-    if (configDerived) {
+    if (derivedConfig) {
       for (const resource of derived.values()) {
-        configDerived.destroy?.({
+        derivedConfig.destroy?.({
+          ecs,
           initParams,
           shared,
           derived: resource,

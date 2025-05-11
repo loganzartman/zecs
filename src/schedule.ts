@@ -35,7 +35,7 @@ export type Schedule<TUpdateParams extends Record<string, unknown>> = {
 
 export async function scheduleSystems<
   TEntity extends EntityLike,
-  const TSystems extends System<Partial<TEntity>, any, any, any, any, any>[],
+  const TSystems extends System<TEntity, any, any, any, any, any>[],
 >(
   systems: TSystems,
   ecs: ECS<TEntity>,
