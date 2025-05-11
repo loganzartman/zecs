@@ -183,7 +183,7 @@ describe('system', () => {
     expect(destroy).toHaveBeenCalled();
   });
 
-  it('creates and manages derived resources for entities', async () => {
+  it('creates and manages each resources for entities', async () => {
     const position = component(
       'position',
       z.object({ x: z.number(), y: z.number() }),
@@ -193,13 +193,13 @@ describe('system', () => {
       z.object({ x: z.number(), y: z.number() }),
     );
 
-    const createDerived = jest.fn(({ entity }) => ({
+    const createEach = jest.fn(({ entity }) => ({
       originalPosition: { ...entity.position },
       lastPosition: { ...entity.position },
       distanceTraveled: 0,
     }));
 
-    const destroyDerived = jest.fn();
+    const destroyEach = jest.fn();
 
     const trackingSystem = system({
       name: 'tracking',
@@ -209,20 +209,20 @@ describe('system', () => {
         create: () => ({ updates: 0 }),
         destroy: () => {},
       },
-      derived: {
-        create: createDerived,
-        destroy: destroyDerived,
+      each: {
+        create: createEach,
+        destroy: destroyEach,
       },
-      onUpdated: ({ entity, updateParams: { dt }, derived }) => {
+      onUpdated: ({ entity, updateParams: { dt }, each }) => {
         entity.position.x += entity.velocity.x * dt;
         entity.position.y += entity.velocity.y * dt;
 
-        const dx = entity.position.x - derived.lastPosition.x;
-        const dy = entity.position.y - derived.lastPosition.y;
+        const dx = entity.position.x - each.lastPosition.x;
+        const dy = entity.position.y - each.lastPosition.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        derived.distanceTraveled += distance;
-        derived.lastPosition = { ...entity.position };
+        each.distanceTraveled += distance;
+        each.lastPosition = { ...entity.position };
       },
     });
 
@@ -238,13 +238,13 @@ describe('system', () => {
     handle.update({ dt: 1 });
     handle.update({ dt: 1 });
 
-    expect(createDerived).toHaveBeenCalledTimes(1);
+    expect(createEach).toHaveBeenCalledTimes(1);
     expect(entity.position).toEqual({ x: 6, y: 8 });
 
     e.remove(id);
     handle.update({ dt: 1 });
 
-    expect(destroyDerived).toHaveBeenCalledTimes(1);
+    expect(destroyEach).toHaveBeenCalledTimes(1);
 
     await handle.stop();
   });
@@ -265,7 +265,7 @@ describe('system', () => {
       query: query()
         .has(position, active)
         .where(({ active }) => active === true),
-      derived: {
+      each: {
         create,
         destroy,
       },

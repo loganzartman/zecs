@@ -9,7 +9,7 @@ export type System<
   TInitParams extends Record<string, unknown>,
   TUpdateParams extends Record<string, unknown>,
   TShared,
-  TDerived,
+  TEach,
 > = {
   /** Human-readable name for debugging */
   name?: string;
@@ -34,21 +34,21 @@ export type System<
       shared: TShared;
     }) => void | Promise<void>;
   };
-  /** Resources derived for each entity that matches the query */
-  derived?: {
-    /** Create derived resources for each matching entity */
+  /** Resources each for each entity that matches the query */
+  each?: {
+    /** Create each resources for each matching entity */
     create: (p: {
       ecs: ECS<TInput>;
       initParams: TInitParams;
       shared: TShared;
       entity: TOutput;
-    }) => TDerived;
-    /** Destroy derived resources for an entity */
+    }) => TEach;
+    /** Destroy each resources for an entity */
     destroy?: (p: {
       ecs: ECS<TInput>;
       initParams: TInitParams;
       shared: TShared;
-      derived: TDerived;
+      each: TEach;
     }) => void;
   };
   /** Called before processing any entities */
@@ -64,7 +64,7 @@ export type System<
     initParams: TInitParams;
     updateParams: TUpdateParams;
     shared: TShared;
-    derived: TDerived;
+    each: TEach;
     entity: TOutput;
   }) => void;
   /** Called after processing all entities */
@@ -110,22 +110,15 @@ export async function attachSystem<
   TInitParams extends Record<string, unknown>,
   TUpdateParams extends Record<string, unknown>,
   TShared,
-  TDerived,
+  TEach,
 >(
-  system: System<
-    TInput,
-    TOutput,
-    TInitParams,
-    TUpdateParams,
-    TShared,
-    TDerived
-  >,
+  system: System<TInput, TOutput, TInitParams, TUpdateParams, TShared, TEach>,
   ecs: ECS<TInput>,
   initParams: TInitParams,
 ): Promise<SystemHandle<TUpdateParams>> {
   const {
     shared: sharedConfig,
-    derived: derivedConfig,
+    each: eachConfig,
     onPreUpdate,
     onUpdated,
     onPostUpdate,
@@ -140,7 +133,7 @@ export async function attachSystem<
     return [shared as TShared, destroyShared];
   })();
 
-  const derived = new Map<TOutput, TDerived>();
+  const each = new Map<TOutput, TEach>();
 
   const observer = observe({
     query: system.query,
@@ -153,13 +146,13 @@ export async function attachSystem<
       },
 
       matched(entity) {
-        if (!derivedConfig) {
+        if (!eachConfig) {
           return;
         }
 
-        derived.set(
+        each.set(
           entity,
-          derivedConfig.create({
+          eachConfig.create({
             ecs,
             initParams,
             shared,
@@ -173,14 +166,14 @@ export async function attachSystem<
           return;
         }
 
-        let derivedResources: TDerived;
-        if (derivedConfig) {
-          if (!derived.has(entity)) {
-            throw new Error('Derived resource not found for updated entity');
+        let eachResources: TEach;
+        if (eachConfig) {
+          if (!each.has(entity)) {
+            throw new Error('Each resource not found for updated entity');
           }
-          derivedResources = derived.get(entity) as TDerived;
+          eachResources = each.get(entity) as TEach;
         } else {
-          derivedResources = undefined as TDerived;
+          eachResources = undefined as TEach;
         }
 
         onUpdated({
@@ -188,29 +181,29 @@ export async function attachSystem<
           initParams,
           updateParams,
           shared,
-          derived: derivedResources,
+          each: eachResources,
           entity,
         });
       },
 
       unmatched(entity) {
-        if (!derivedConfig) {
+        if (!eachConfig) {
           return;
         }
 
-        if (!derived.has(entity)) {
-          throw new Error('Derived resource not found for unmatched entity');
+        if (!each.has(entity)) {
+          throw new Error('Each resource not found for unmatched entity');
         }
-        const derivedResource = derived.get(entity) as TDerived;
+        const eachResource = each.get(entity) as TEach;
 
-        derivedConfig.destroy?.({
+        eachConfig.destroy?.({
           ecs,
           initParams,
           shared,
-          derived: derivedResource,
+          each: eachResource,
         });
 
-        derived.delete(entity);
+        each.delete(entity);
       },
 
       postUpdate(updateParams: TUpdateParams) {
@@ -225,13 +218,13 @@ export async function attachSystem<
 
   const stop = async () => {
     observer.stop();
-    if (derivedConfig) {
-      for (const resource of derived.values()) {
-        derivedConfig.destroy?.({
+    if (eachConfig) {
+      for (const resource of each.values()) {
+        eachConfig.destroy?.({
           ecs,
           initParams,
           shared,
-          derived: resource,
+          each: resource,
         });
       }
     }
@@ -247,16 +240,9 @@ export function system<
   TInitParams extends Record<string, unknown>,
   TUpdateParams extends Record<string, unknown>,
   TShared,
-  TDerived,
+  TEach,
 >(
-  config: System<
-    TInput,
-    TOutput,
-    TInitParams,
-    TUpdateParams,
-    TShared,
-    TDerived
-  >,
-): System<TInput, TOutput, TInitParams, TUpdateParams, TShared, TDerived> {
+  config: System<TInput, TOutput, TInitParams, TUpdateParams, TShared, TEach>,
+): System<TInput, TOutput, TInitParams, TUpdateParams, TShared, TEach> {
   return config;
 }
