@@ -83,7 +83,7 @@ describe('observe', () => {
     observer.unmatched.on(unmatched);
 
     const entity = e.entity({ health: 1 });
-    const id = e.add(entity);
+    e.add(entity);
 
     observer.update(e);
     expect(matched).toHaveBeenCalledWith(entity, undefined);
@@ -91,13 +91,13 @@ describe('observe', () => {
     expect(unmatched).not.toHaveBeenCalled();
 
     // Entity stops matching query
-    e.entities[id].health = 0;
+    entity.health = 0;
     observer.update(e);
     expect(unmatched).toHaveBeenCalledWith(entity, undefined);
     expect(updated).toHaveBeenCalledTimes(1);
 
     // Entity matches again
-    e.entities[id].health = 1;
+    entity.health = 1;
     observer.update(e);
     expect(matched).toHaveBeenCalledTimes(2);
     expect(updated).toHaveBeenCalledTimes(2);

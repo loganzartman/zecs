@@ -88,14 +88,14 @@ describe('ecs', () => {
       const entity = myEcs.entity({ position: { x: 1, y: 2 } });
       const entityId = myEcs.add(entity);
 
-      myEcs.alias('entity', entityId);
-      expect(myEcs.get('entity')).toEqual(entity);
+      myEcs.alias('test-alias', entityId);
+      expect(myEcs.get('test-alias')).toEqual(entity);
 
       const serialized = JSON.stringify(myEcs.toJSON());
 
       const newEcs = ecs([position]);
       newEcs.loadJSON(JSON.parse(serialized));
-      expect(newEcs.get('entity')).toEqual(entity);
+      expect(newEcs.get('test-alias')).toEqual(entity);
     });
   });
 
