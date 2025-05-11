@@ -1,12 +1,12 @@
 import type { ECS, EntityLike } from './ecs';
 import {
-  type SystemUpdateParams,
   type AnySystem,
   type System,
-  type SystemInitParams,
-  attachSystem,
-  type UnknownSystem,
   type SystemHandle,
+  type SystemInitParams,
+  type SystemUpdateParams,
+  type UnknownSystem,
+  attachSystem,
 } from './system';
 
 type CombinedInitParams<TSystems extends AnySystem[]> = TSystems extends [

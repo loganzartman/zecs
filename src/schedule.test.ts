@@ -3,7 +3,7 @@ import { component } from './component';
 import { ecs } from './ecs';
 import { query } from './query';
 import { formatSchedule, scheduleSystems } from './schedule';
-import { system, type UnknownSystem } from './system';
+import { type UnknownSystem, system } from './system';
 
 describe('schedule', () => {
   it('creates a schedule based on system dependencies', async () => {
@@ -20,14 +20,14 @@ describe('schedule', () => {
     const systemA = system({
       name: 'systemA',
       query: query().has(position),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       onUpdated: jest.fn(),
     });
 
     const systemB = system({
       name: 'systemB',
       query: query().has(position, velocity),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       deps: [systemA],
       onUpdated: jest.fn(),
     });
@@ -35,7 +35,7 @@ describe('schedule', () => {
     const systemC = system({
       name: 'systemC',
       query: query().has(position),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       deps: [systemB],
       onUpdated: jest.fn(),
     });
@@ -67,21 +67,21 @@ describe('schedule', () => {
     const systemA = system({
       name: 'systemA',
       query: query().has(position),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       onUpdated: jest.fn(),
     });
 
     const systemB = system({
       name: 'systemB',
       query: query().has(velocity),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       onUpdated: jest.fn(),
     });
 
     const systemC = system({
       name: 'systemC',
       query: query().has(position, velocity),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       deps: [systemA, systemB],
       onUpdated: jest.fn(),
     });
@@ -109,7 +109,7 @@ describe('schedule', () => {
     const systemA = system({
       name: 'systemA',
       query: query().has(position),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       onUpdated: () => {
         executionOrder.push('systemA');
       },
@@ -118,7 +118,7 @@ describe('schedule', () => {
     const systemB = system({
       name: 'systemB',
       query: query().has(position),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       deps: [systemA],
       onUpdated: () => {
         executionOrder.push('systemB');
@@ -128,7 +128,7 @@ describe('schedule', () => {
     const systemC = system({
       name: 'systemC',
       query: query().has(position),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       deps: [systemB],
       onUpdated: () => {
         executionOrder.push('systemC');
@@ -158,7 +158,7 @@ describe('schedule', () => {
       name: 'systemA',
       query: query().has(position),
       initParams: z.object({ scale: z.number() }),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       shared: {
         create: async ({ initParams }) => {
           initSharedA(initParams);
@@ -171,7 +171,7 @@ describe('schedule', () => {
       name: 'systemB',
       query: query().has(position),
       initParams: z.object({ length: z.number() }),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       shared: {
         create: async ({ initParams }) => {
           initSharedB(initParams);
@@ -204,7 +204,7 @@ describe('schedule', () => {
     const systemA = system({
       name: 'systemA',
       query: query().has(position),
-      params: z.object({
+      updateParams: z.object({
         dt: z.number(),
         multiplier: z.number(),
       }),
@@ -214,7 +214,7 @@ describe('schedule', () => {
     const systemB = system({
       name: 'systemB',
       query: query().has(position),
-      params: z.object({
+      updateParams: z.object({
         dt: z.number(),
         multiplier: z.number(),
       }),
@@ -226,18 +226,18 @@ describe('schedule', () => {
 
     const schedule = await scheduleSystems([systemA, systemB], ecsInstance, {});
 
-    const params = { dt: 0.1, multiplier: 2 };
-    schedule.update(params);
+    const updateParams = { dt: 0.1, multiplier: 2 };
+    schedule.update(updateParams);
 
     expect(updateFnA).toHaveBeenCalledWith(
       expect.objectContaining({
-        params,
+        updateParams,
       }),
     );
 
     expect(updateFnB).toHaveBeenCalledWith(
       expect.objectContaining({
-        params,
+        updateParams,
       }),
     );
   });
@@ -251,7 +251,7 @@ describe('schedule', () => {
     const systemA = system({
       name: 'systemA',
       query: query().has(position),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       onUpdated: jest.fn(),
       shared: {
         create: async () => ({ hello: 'world' }),
@@ -262,7 +262,7 @@ describe('schedule', () => {
     const systemB = system({
       name: 'systemB',
       query: query().has(position),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       onUpdated: jest.fn(),
       shared: {
         create: async () => ({ hello: 'world' }),
@@ -285,14 +285,14 @@ describe('schedule', () => {
     const systemA = system({
       name: 'systemA',
       query: query().has(position),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       onUpdated: jest.fn(),
     });
 
     const systemB = system({
       name: 'systemB',
       query: query().has(position),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       deps: [systemA],
       onUpdated: jest.fn(),
     });
@@ -313,14 +313,14 @@ describe('schedule', () => {
     const systemA = system({
       name: 'systemA',
       query: query().has(position),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       onUpdated: jest.fn(),
     });
 
     const systemB = system({
       name: 'systemB',
       query: query().has(position),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       deps: [systemA],
       onUpdated: jest.fn(),
     });

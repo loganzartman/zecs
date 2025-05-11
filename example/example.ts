@@ -1,7 +1,7 @@
 import { makeExample } from './exampleSystem.js';
 
 async function main() {
-  const { ecs, update } = await makeExample({ n: 100 });
+  const { schedule } = await makeExample({ n: 100 });
 
   const canvas = document.getElementById('canvas');
   if (!(canvas instanceof HTMLCanvasElement))
@@ -18,7 +18,7 @@ async function main() {
     ctx.resetTransform();
     ctx.scale(ctx.canvas.width, ctx.canvas.height);
 
-    update({ dt: dt * 3, ctx });
+    schedule.update({ g: 9.8, dt: dt * 3, ctx });
     requestAnimationFrame(animationLoop);
   };
 

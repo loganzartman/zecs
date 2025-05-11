@@ -1,4 +1,4 @@
-import { z, type ZodType } from 'zod';
+import { type ZodType, z } from 'zod';
 import type { ECS, EntityLike } from './ecs';
 import { observe } from './observe';
 import type { Query } from './query';
@@ -18,7 +18,7 @@ export type System<
   /** Parameters schema for initializing the system */
   initParams?: ZodType<TInitParams>;
   /** Parameters schema which must be passed to update() */
-  params?: ZodType<TUpdateParams>;
+  updateParams?: ZodType<TUpdateParams>;
   /** Systems that must be updated before this one */
   deps?: System<any, any, any, any, any, any>[];
   /** Resources shared across all entities in the system */
@@ -54,13 +54,15 @@ export type System<
   /** Called before processing any entities */
   onPreUpdate?: (p: {
     ecs: ECS<TInput>;
-    params: TUpdateParams;
+    initParams: TInitParams;
+    updateParams: TUpdateParams;
     shared: TShared;
   }) => void;
   /** Called for each matching entity */
   onUpdated?: (p: {
     ecs: ECS<TInput>;
-    params: TUpdateParams;
+    initParams: TInitParams;
+    updateParams: TUpdateParams;
     shared: TShared;
     derived: TDerived;
     entity: TOutput;
@@ -68,7 +70,8 @@ export type System<
   /** Called after processing all entities */
   onPostUpdate?: (p: {
     ecs: ECS<TInput>;
-    params: TUpdateParams;
+    initParams: TInitParams;
+    updateParams: TUpdateParams;
     shared: TShared;
   }) => void;
 };
@@ -96,7 +99,7 @@ export type SystemUpdateParams<TSystem extends AnySystem> =
 
 export type SystemHandle<TUpdateParams extends Record<string, unknown>> = {
   /** Update the system with the given parameters */
-  update: (params: TUpdateParams) => void;
+  update: (updateParams: TUpdateParams) => void;
   /** Stop observing the system and destroy all resources */
   stop: () => Promise<void>;
 };
@@ -142,11 +145,11 @@ export async function attachSystem<
   const observer = observe({
     query: system.query,
     params:
-      system.params ??
+      system.updateParams ??
       (z.record(z.string(), z.unknown()) as ZodType<TUpdateParams>),
     on: {
-      preUpdate(params: TUpdateParams) {
-        onPreUpdate?.({ ecs, params, shared });
+      preUpdate(updateParams: TUpdateParams) {
+        onPreUpdate?.({ ecs, initParams, updateParams, shared });
       },
 
       matched(entity) {
@@ -165,7 +168,7 @@ export async function attachSystem<
         );
       },
 
-      updated(entity, params) {
+      updated(entity, updateParams) {
         if (!onUpdated) {
           return;
         }
@@ -182,7 +185,8 @@ export async function attachSystem<
 
         onUpdated({
           ecs,
-          params,
+          initParams,
+          updateParams,
           shared,
           derived: derivedResources,
           entity,
@@ -209,14 +213,14 @@ export async function attachSystem<
         derived.delete(entity);
       },
 
-      postUpdate(params: TUpdateParams) {
-        onPostUpdate?.({ ecs, params, shared });
+      postUpdate(updateParams: TUpdateParams) {
+        onPostUpdate?.({ ecs, initParams, updateParams, shared });
       },
     },
   });
 
-  const update = (params: TUpdateParams) => {
-    observer.update(ecs, params);
+  const update = (updateParams: TUpdateParams) => {
+    observer.update(ecs, updateParams);
   };
 
   const stop = async () => {

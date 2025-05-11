@@ -18,11 +18,11 @@ describe('system', () => {
     const movementSystem = system({
       name: 'movement',
       query: query().has(position, velocity),
-      params: z.object({ dt: z.number() }),
-      onUpdated: ({ entity, params }) => {
+      updateParams: z.object({ dt: z.number() }),
+      onUpdated: ({ entity, updateParams: { dt } }) => {
         const { position, velocity } = entity;
-        position.x += velocity.x * params.dt;
-        position.y += velocity.y * params.dt;
+        position.x += velocity.x * dt;
+        position.y += velocity.y * dt;
       },
     });
 
@@ -53,10 +53,10 @@ describe('system', () => {
     );
     const staticFlag = component('staticFlag', z.boolean());
 
-    const updateFn = jest.fn(({ entity, params }) => {
+    const updateFn = jest.fn(({ entity, updateParams: { dt } }) => {
       const { position, velocity } = entity;
-      position.x += velocity.x * params.dt;
-      position.y += velocity.y * params.dt;
+      position.x += velocity.x * dt;
+      position.y += velocity.y * dt;
     });
 
     const movementSystem = system({
@@ -64,7 +64,7 @@ describe('system', () => {
       query: query()
         .has(position, velocity)
         .where((entity) => !('staticFlag' in entity)),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       onUpdated: updateFn,
     });
 
@@ -106,17 +106,17 @@ describe('system', () => {
     const testSystem = system({
       name: 'test',
       query: query().has(position),
-      params: z.object({ value: z.number() }),
-      onPreUpdate: ({ params }) => {
-        callOrder.push(`preUpdate: ${params.value}`);
+      updateParams: z.object({ value: z.number() }),
+      onPreUpdate: ({ updateParams }) => {
+        callOrder.push(`preUpdate: ${updateParams.value}`);
       },
-      onUpdated: ({ entity, params }) => {
+      onUpdated: ({ entity, updateParams }) => {
         callOrder.push(
-          `updated: ${params.value} at ${entity.position.x},${entity.position.y}`,
+          `updated: ${updateParams.value} at ${entity.position.x},${entity.position.y}`,
         );
       },
-      onPostUpdate: ({ params }) => {
-        callOrder.push(`postUpdate: ${params.value}`);
+      onPostUpdate: ({ updateParams }) => {
+        callOrder.push(`postUpdate: ${updateParams.value}`);
       },
     });
 
@@ -148,7 +148,7 @@ describe('system', () => {
       name: 'counter',
       query: query().has(counter),
       initParams: z.object({ initialTotal: z.number() }),
-      params: z.object({ increment: z.number() }),
+      updateParams: z.object({ increment: z.number() }),
       shared: {
         create: ({ initParams }) => ({
           total: initParams.initialTotal,
@@ -159,9 +159,9 @@ describe('system', () => {
       onPreUpdate: ({ shared }) => {
         shared.updates++;
       },
-      onUpdated: ({ entity, params, shared }) => {
-        entity.counter += params.increment;
-        shared.total += params.increment;
+      onUpdated: ({ entity, updateParams, shared }) => {
+        entity.counter += updateParams.increment;
+        shared.total += updateParams.increment;
       },
     });
 
@@ -204,7 +204,7 @@ describe('system', () => {
     const trackingSystem = system({
       name: 'tracking',
       query: query().has(position, velocity),
-      params: z.object({ dt: z.number() }),
+      updateParams: z.object({ dt: z.number() }),
       shared: {
         create: () => ({ updates: 0 }),
         destroy: () => {},
@@ -213,9 +213,9 @@ describe('system', () => {
         create: createDerived,
         destroy: destroyDerived,
       },
-      onUpdated: ({ entity, params, derived }) => {
-        entity.position.x += entity.velocity.x * params.dt;
-        entity.position.y += entity.velocity.y * params.dt;
+      onUpdated: ({ entity, updateParams: { dt }, derived }) => {
+        entity.position.x += entity.velocity.x * dt;
+        entity.position.y += entity.velocity.y * dt;
 
         const dx = entity.position.x - derived.lastPosition.x;
         const dy = entity.position.y - derived.lastPosition.y;
@@ -265,7 +265,6 @@ describe('system', () => {
       query: query()
         .has(position, active)
         .where(({ active }) => active === true),
-      params: z.object({}),
       derived: {
         create,
         destroy,
@@ -311,7 +310,7 @@ describe('system', () => {
     const testSystem = system({
       name: 'test',
       query: query().has(test),
-      params: z.object({
+      updateParams: z.object({
         required: z.string(),
         optional: z.number().optional(),
       }),

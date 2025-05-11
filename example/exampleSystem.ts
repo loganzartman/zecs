@@ -47,19 +47,18 @@ const tether = zecs.component(
 const gravitySystem = zecs.system({
   name: 'gravity',
   query: zecs.query().has(acceleration),
-  params: z.object({ g: z.number(), dt: z.number() }),
-  deps: [], // No dependencies
-  onUpdated: ({ entity, params }) => {
-    entity.acceleration.y = params.g * params.dt;
+  updateParams: z.object({ g: z.number(), dt: z.number() }),
+  onUpdated: ({ entity, updateParams: { g, dt } }) => {
+    entity.acceleration.y = g * dt;
   },
 });
 
 const tetheringSystem = zecs.system({
   name: 'tethering',
   query: zecs.query().has(tether, position, acceleration, mass),
-  params: z.object({ dt: z.number() }),
-  deps: [], // No dependencies
-  onUpdated: ({ entity, params }) => {
+  updateParams: z.object({ dt: z.number() }),
+  deps: [],
+  onUpdated: ({ entity, updateParams: { dt } }) => {
     const { tether, position, acceleration, mass } = entity;
     const dx = tether.x - position.x;
     const dy = tether.y - position.y;
@@ -70,8 +69,8 @@ const tetheringSystem = zecs.system({
       const fx = (dx / distance) * force;
       const fy = (dy / distance) * force;
 
-      acceleration.x += fx * params.dt;
-      acceleration.y += fy * params.dt;
+      acceleration.x += fx * dt;
+      acceleration.y += fy * dt;
     }
   },
 });
@@ -79,15 +78,15 @@ const tetheringSystem = zecs.system({
 const kinematicsSystem = zecs.system({
   name: 'kinematics',
   query: zecs.query().has(acceleration, velocity, position),
-  params: z.object({ dt: z.number() }),
-  deps: [gravitySystem, tetheringSystem], // Depends on acceleration systems
-  onUpdated: ({ entity, params }) => {
+  updateParams: z.object({ dt: z.number() }),
+  deps: [gravitySystem, tetheringSystem],
+  onUpdated: ({ entity, updateParams: { dt } }) => {
     const { acceleration, velocity, position } = entity;
-    velocity.x += acceleration.x * params.dt;
-    velocity.y += acceleration.y * params.dt;
+    velocity.x += acceleration.x * dt;
+    velocity.y += acceleration.y * dt;
 
-    position.x += velocity.x * params.dt;
-    position.y += velocity.y * params.dt;
+    position.x += velocity.x * dt;
+    position.y += velocity.y * dt;
 
     acceleration.x = 0;
     acceleration.y = 0;
@@ -97,8 +96,7 @@ const kinematicsSystem = zecs.system({
 const wallsSystem = zecs.system({
   name: 'walls',
   query: zecs.query().has(collider, position, velocity),
-  params: z.object({ dt: z.number() }),
-  deps: [kinematicsSystem], // Depends on kinematics
+  deps: [kinematicsSystem],
   onUpdated: ({ entity }) => {
     const { collider, position, velocity } = entity;
 
@@ -123,13 +121,12 @@ const wallsSystem = zecs.system({
 const drawBgSystem = zecs.system({
   name: 'drawBg',
   query: zecs.query(),
-  params: z.object({
+  updateParams: z.object({
     ctx: z.custom<CanvasRenderingContext2D>().optional(),
     dt: z.number(),
   }),
   deps: [wallsSystem], // Draw after physics is done
-  onPreUpdate: ({ params }) => {
-    const { ctx } = params;
+  onPreUpdate: ({ updateParams: { ctx } }) => {
     if (!ctx) return;
 
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -139,13 +136,12 @@ const drawBgSystem = zecs.system({
 const drawTetherSystem = zecs.system({
   name: 'drawTether',
   query: zecs.query().has(tether, position),
-  params: z.object({
+  updateParams: z.object({
     ctx: z.custom<CanvasRenderingContext2D>().optional(),
     dt: z.number(),
   }),
   deps: [drawBgSystem], // Draw after background
-  onUpdated: ({ entity, params }) => {
-    const { ctx } = params;
+  onUpdated: ({ entity, updateParams: { ctx } }) => {
     if (!ctx) return;
 
     const { tether, position } = entity;
@@ -161,13 +157,12 @@ const drawTetherSystem = zecs.system({
 const drawColliderSystem = zecs.system({
   name: 'drawCollider',
   query: zecs.query().has(collider, position),
-  params: z.object({
+  updateParams: z.object({
     ctx: z.custom<CanvasRenderingContext2D>().optional(),
     dt: z.number(),
   }),
   deps: [drawTetherSystem], // Draw after tethers
-  onUpdated: ({ entity, params }) => {
-    const { ctx } = params;
+  onUpdated: ({ entity, updateParams: { ctx } }) => {
     if (!ctx) return;
 
     const { collider, position } = entity;
@@ -226,20 +221,5 @@ export async function makeExample({ n }: { n: number }) {
     );
   }
 
-  // Function to update all systems according to the schedule
-  const update = (params: { dt: number; ctx?: CanvasRenderingContext2D }) => {
-    // The schedule will execute all systems in the correct dependency order
-    schedule.update({
-      g: 9.8,
-      dt: params.dt,
-      ctx: params.ctx,
-    });
-  };
-
-  // Clean up function - the schedule handles stopping all system handles
-  const cleanup = async () => {
-    await schedule.stop();
-  };
-
-  return { ecs, update, cleanup };
+  return { ecs, schedule };
 }
