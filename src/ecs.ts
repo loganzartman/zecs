@@ -31,6 +31,9 @@ export type ECSEntity<TECS extends ECS<EntityLike>> = TECS extends ECS<
   ? TEntity
   : never;
 
+/**
+ * An ECS instance
+ */
 export class ECS<TEntity extends EntityLike> {
   #entityAliases = new Map<unknown, Set<string>>();
   #entityID = new Map<unknown, string>();
@@ -38,6 +41,9 @@ export class ECS<TEntity extends EntityLike> {
   entities: Record<string, Partial<TEntity>> = {};
   aliases: Record<string, string> = {};
 
+  /**
+   * You probably want the {@link ecs} function instead.
+   */
   constructor(components: EntityComponents<TEntity>) {
     this.components = components;
   }
@@ -67,6 +73,12 @@ export class ECS<TEntity extends EntityLike> {
     });
   }
 
+  /**
+   * Store an entity in the ECS and return the entity.
+   *
+   * @param entity a plain object with any of the components supported by this ECS
+   * @returns the added entity
+   */
   add(entity: Partial<TEntity> & Record<string, unknown>): Partial<TEntity> {
     let id = uuid();
 
@@ -79,12 +91,21 @@ export class ECS<TEntity extends EntityLike> {
     return this.#trackEntity(entity, id);
   }
 
+  /**
+   * Store multiple entities in the ECS.
+   */
   addAll(entities: Array<Partial<TEntity> & { [key: string]: unknown }>): void {
     for (const entity of entities) {
       this.add(entity);
     }
   }
 
+  /**
+   * Remove an entity from the ECS.
+   *
+   * @param entity the entity to remove
+   * @throws Error if the entity is not added to this ECS
+   */
   remove(entity: Partial<TEntity>): void {
     const id = this.getEntityID(entity);
     if (id === undefined) {
@@ -103,6 +124,9 @@ export class ECS<TEntity extends EntityLike> {
     this.#entityID.delete(entity);
   }
 
+  /**
+   * Remove all entities from the ECS.
+   */
   removeAll(): void {
     this.entities = {};
     this.aliases = {};
@@ -110,6 +134,14 @@ export class ECS<TEntity extends EntityLike> {
     this.#entityID.clear();
   }
 
+  /**
+   * Get an entity by its ID or alias.
+   *
+   * @param idOrAlias an internal ID or user-defined alias of the entity
+   * @returns the entity, or undefined if not found
+   *
+   * @see {@link ECS.getEntityID}
+   */
   get(idOrAlias: string): Partial<TEntity> | undefined {
     if (idOrAlias in this.aliases) {
       return this.entities[this.aliases[idOrAlias]];
@@ -117,20 +149,37 @@ export class ECS<TEntity extends EntityLike> {
     return this.entities[idOrAlias];
   }
 
+  /**
+   * Get all entities in the ECS.
+   *
+   * @returns a generator that yields all entities
+   */
   *getAll(): Generator<Partial<TEntity>> {
     for (const id in this.entities) {
       yield this.entities[id];
     }
   }
 
+  /**
+   * Get the internal ID of an entity.
+   *
+   * @returns the internal ID of the entity, or undefined if not found
+   *
+   * @see {@link ECS.get}
+   */
   getEntityID(entity: Partial<TEntity>): string | undefined {
     return this.#entityID.get(entity);
   }
 
-  getEntityByID(id: string): Partial<TEntity> | undefined {
-    return this.entities[id];
-  }
-
+  /**
+   * Define an alias for the entity.
+   *
+   * An alias can be used to retrieve the entity using {@link ECS.get}.
+   *
+   * @param alias an arbitrary string to use as an alias
+   * @param entity the entity to alias
+   * @throws Error if the entity is not added to this ECS
+   */
   alias(alias: string, entity: Partial<TEntity>): void {
     const id = this.getEntityID(entity);
     if (id === undefined) {
@@ -144,6 +193,20 @@ export class ECS<TEntity extends EntityLike> {
     this.aliases[alias] = id;
   }
 
+  /**
+   * Create a named singleton entity, and return a function that retrieves it.
+   *
+   * If the named entity does not exist, it is created.
+   *
+   * If the named entity exists and matches the query, it is returned.
+   *
+   * If the named entity exists and does NOT match the query, it is replaced.
+   *
+   * @param alias an arbitrary string to use as an alias
+   * @param query a query to match the entity against
+   * @param entityFactory a function that creates the entity
+   * @returns the singleton entity
+   */
   singleton<T extends Partial<TEntity>>(
     alias: string,
     query: Query<Partial<TEntity>, T>,
@@ -151,8 +214,11 @@ export class ECS<TEntity extends EntityLike> {
   ): () => T {
     return () => {
       const existing = this.get(alias);
-      if (existing && query.match(existing)) {
-        return existing;
+      if (existing) {
+        if (query.match(existing)) {
+          return existing;
+        }
+        this.remove(existing);
       }
       const entity = entityFactory();
       this.add(entity);
@@ -161,6 +227,13 @@ export class ECS<TEntity extends EntityLike> {
     };
   }
 
+  /**
+   * Convert the ECS to a plain object that can be serialized to JSON (assuming all your components are serializable).
+   *
+   * Entity references are are serialized such that they can be restored later.
+   *
+   * @returns a plain object representation of the ECS
+   */
   toJSON() {
     return {
       zecs: packageJson.version,
@@ -169,6 +242,11 @@ export class ECS<TEntity extends EntityLike> {
     };
   }
 
+  /**
+   * Restore the state of this ECS from the given object created by {@link ECS.toJSON}.
+   *
+   * Entity references are restored such that they point to the correct entities.
+   */
   loadJSON(json: unknown) {
     this.removeAll();
 
@@ -180,7 +258,7 @@ export class ECS<TEntity extends EntityLike> {
     }
 
     for (const [alias, id] of entries(aliases)) {
-      const entity = this.getEntityByID(id);
+      const entity = this.get(id);
       if (entity === undefined) {
         throw new Error(
           `Can't load alias "${alias}": entity with ID "${id}" not found`,
@@ -191,6 +269,12 @@ export class ECS<TEntity extends EntityLike> {
   }
 }
 
+/**
+ * Create an ECS instance whose entities can have any of the given components.
+ *
+ * @param components - The components that can be used in the ECS.
+ * @returns an ECS instance
+ */
 export function ecs<const TComponents extends ComponentArrayLike>(
   components: TComponents,
 ): ECS<ComponentsEntity<TComponents>> {
