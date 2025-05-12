@@ -62,16 +62,7 @@ export class ECS<TEntity extends EntityLike> {
   #serializationSchema() {
     return z.object({
       zecs: z.literal(packageJson.version),
-      entities: z
-        .record(z.string(), this.#entitySchema())
-        .transform((entities) =>
-          fromEntries(
-            entries(entities).map(([id, entity]) => [
-              id,
-              this.#trackEntity(entity, id),
-            ]),
-          ),
-        ),
+      entities: z.record(z.string(), this.#entitySchema()),
       aliases: z.record(z.string(), z.string()),
     });
   }
@@ -180,14 +171,14 @@ export class ECS<TEntity extends EntityLike> {
 
   loadJSON(json: unknown) {
     this.removeAll();
+
     const { entities, aliases } = this.#serializationSchema().parse(json);
-    const resolvedEntities = deserializeRefs(entities, entities) as Record<
-      string,
-      Partial<TEntity>
-    >;
-    for (const [id, entity] of entries(resolvedEntities)) {
+    deserializeRefs(entities, entities);
+
+    for (const [id, entity] of entries(entities)) {
       this.#trackEntity(entity, id);
     }
+
     for (const [alias, id] of entries(aliases)) {
       const entity = this.getEntityByID(id);
       if (entity === undefined) {

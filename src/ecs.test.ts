@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { component } from './component';
 import { ecs } from './ecs';
 import { query } from './query';
+import { entitySchema } from './entitySchema';
 
 describe('ecs', () => {
   describe('aliasing', () => {
@@ -90,6 +91,25 @@ describe('ecs', () => {
       const newEcs = ecs([position]);
       newEcs.loadJSON(JSON.parse(serialized));
       expect(newEcs.get('test-alias')).toEqual(entity);
+    });
+
+    it('restores entity references', () => {
+      const name = component('name', z.string());
+      const friend = component('friend', entitySchema([name]));
+      const myEcs = ecs([name, friend]);
+
+      const entity1 = myEcs.add({ name: '' });
+      const entity2 = myEcs.add({ name: 'Bob', friend: entity1 });
+
+      const serialized = JSON.stringify(myEcs.toJSON());
+
+      const newEcs = ecs([name, friend]);
+      newEcs.loadJSON(JSON.parse(serialized));
+
+      const restoredEntities = [...newEcs.getAll()];
+      expect(restoredEntities).toHaveLength(2);
+      expect(restoredEntities).toContainEqual(entity1);
+      expect(restoredEntities).toContainEqual(entity2);
     });
   });
 
