@@ -1,6 +1,6 @@
 {
   "name": "zecs",
-  "version": "0.17.0",
+  "version": "0.17.1",
   "description": "strongly-typed entity-component-system implementation for hobby use",
   "keywords": [],
   "author": "Logan Zartman",
@@ -8,6 +8,7 @@
   "source": "src/index.ts",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "sideEffects": false,
   "files": ["dist"],
   "type": "module",
   "scripts": {
