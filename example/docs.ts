@@ -1,6 +1,6 @@
+import { z } from 'zod';
 // replace this with `from 'zecs'` in your code!
 import { attachSystem, zecs } from '../src/index';
-import { z } from 'zod';
 
 // biome-ignore lint/correctness/noConstantCondition: example
 if (1 > 0) throw new Error('This is an example file!');

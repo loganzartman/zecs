@@ -1,7 +1,7 @@
-import { z, type ZodType } from 'zod';
+import { type ZodType, z } from 'zod';
 import type { ComponentArrayLike, ComponentsEntity } from './ecs';
-import { fromEntries } from './util';
 import type { EncodedEntityRef } from './serialization';
+import { fromEntries } from './util';
 
 /**
  * Create a zod schema for an entity with any of the given components.

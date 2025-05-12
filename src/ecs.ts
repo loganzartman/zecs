@@ -3,7 +3,7 @@ import packageJson from '../package.json';
 import type { Component } from './component';
 import type { Query } from './query';
 import { deserializeRefs, serializeRefs } from './serialization';
-import { entries, type Expand, fromEntries } from './util';
+import { type Expand, entries, fromEntries } from './util';
 import { uuid } from './uuid';
 
 export type EntityLike = Record<string, unknown>;

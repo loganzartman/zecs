@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { component } from './component';
 import { ecs } from './ecs';
-import { query } from './query';
 import { entitySchema } from './entitySchema';
+import { query } from './query';
 
 describe('ecs', () => {
   describe('aliasing', () => {

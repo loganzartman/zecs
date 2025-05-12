@@ -200,25 +200,23 @@ export async function makeExample({ n }: { n: number }) {
 
   // Create entities
   for (let i = 0; i < n; ++i) {
-    ecs.add(
-      ecs.entity({
-        mass: Math.random(),
-        position: { x: Math.random(), y: Math.random() },
-        velocity: { x: 0, y: 0 },
-        acceleration: { x: 0, y: 0 },
-        collider: {
-          radius: Math.random() * 0.05 + 0.01,
-          restitution: Math.random(),
+    ecs.add({
+      mass: Math.random(),
+      position: { x: Math.random(), y: Math.random() },
+      velocity: { x: 0, y: 0 },
+      acceleration: { x: 0, y: 0 },
+      collider: {
+        radius: Math.random() * 0.05 + 0.01,
+        restitution: Math.random(),
+      },
+      ...(Math.random() < 0.1 && {
+        tether: {
+          x: Math.random(),
+          y: Math.random(),
+          strength: 10 + Math.random() * 10,
         },
-        ...(Math.random() < 0.1 && {
-          tether: {
-            x: Math.random(),
-            y: Math.random(),
-            strength: 10 + Math.random() * 10,
-          },
-        }),
       }),
-    );
+    });
   }
 
   return { ecs, schedule };

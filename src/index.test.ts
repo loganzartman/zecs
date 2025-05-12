@@ -1,8 +1,8 @@
 import z from 'zod';
 import { component } from './component';
 import { type ECSWith, ecs } from './ecs';
-import { query } from './query';
 import { entitySchema } from './entitySchema';
+import { query } from './query';
 
 describe('zecs', () => {
   it('works end-to-end', () => {
