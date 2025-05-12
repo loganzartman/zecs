@@ -33,7 +33,7 @@ export type ECSEntity<TECS extends ECS<EntityLike>> = TECS extends ECS<
 
 export class ECS<TEntity extends EntityLike> {
   #entityAliases = new Map<unknown, Set<string>>();
-  #entityIDs = new Map<unknown, string>();
+  #entityID = new Map<unknown, string>();
   components: Readonly<EntityComponents<TEntity>>;
   entities: Record<string, Partial<TEntity>> = {};
   aliases: Record<string, string> = {};
@@ -54,7 +54,7 @@ export class ECS<TEntity extends EntityLike> {
   }
 
   #trackEntity<T extends object>(entity: T, id: string): T {
-    this.#entityIDs.set(entity, id);
+    this.#entityID.set(entity, id);
     this.entities[id] = entity;
     return entity;
   }
@@ -91,9 +91,6 @@ export class ECS<TEntity extends EntityLike> {
       throw new Error(`Can't remove entity: entity is not added to this ECS`);
     }
 
-    delete this.entities[id];
-    this.#entityIDs.delete(entity);
-
     const aliases = this.#entityAliases.get(entity);
     if (aliases) {
       for (const alias of aliases) {
@@ -101,14 +98,16 @@ export class ECS<TEntity extends EntityLike> {
       }
     }
     this.#entityAliases.delete(entity);
-    this.#entityIDs.delete(entity);
+
+    delete this.entities[id];
+    this.#entityID.delete(entity);
   }
 
   removeAll(): void {
     this.entities = {};
     this.aliases = {};
     this.#entityAliases.clear();
-    this.#entityIDs.clear();
+    this.#entityID.clear();
   }
 
   get(idOrAlias: string): Partial<TEntity> | undefined {
@@ -125,7 +124,7 @@ export class ECS<TEntity extends EntityLike> {
   }
 
   getEntityID(entity: Partial<TEntity>): string | undefined {
-    return this.#entityIDs.get(entity);
+    return this.#entityID.get(entity);
   }
 
   getEntityByID(id: string): Partial<TEntity> | undefined {
