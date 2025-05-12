@@ -1,15 +1,16 @@
-export const entitySymbol: unique symbol = Symbol('zecs-entity');
-export const refSigil = '$$ref';
+import { z } from 'zod';
+import { hasOwn } from './util';
 
-export function isSerializedRef(
-  value: unknown,
-): value is { [refSigil]: string } {
-  return (
-    !!value &&
-    typeof value === 'object' &&
-    refSigil in value &&
-    typeof value[refSigil] === 'string'
-  );
+const refKey = '__zecs_ref__';
+
+export const encodedEntityRefSchema = z.object({
+  [refKey]: z.string(),
+});
+
+export type EncodedEntityRef = z.infer<typeof encodedEntityRefSchema>;
+
+export function isEncodedEntityRef(value: unknown): value is EncodedEntityRef {
+  return encodedEntityRefSchema.safeParse(value).success;
 }
 
 export function serializeRefs(
@@ -18,30 +19,28 @@ export function serializeRefs(
   getEntityID: (entity: object) => string | undefined,
   visited = new Set<unknown>(),
 ): unknown {
-  // falsy
   if (!value) return value;
 
-  // primitive
   if (typeof value !== 'object') return value;
 
-  // entity reference
   const entityID = getEntityID(value);
   if (entityID && startDepth <= 0) {
-    return { [refSigil]: entityID };
+    // tracked entity; convert to reference
+    return { [refKey]: entityID } satisfies EncodedEntityRef;
   }
 
   // circular reference check
-  if (visited.has(value))
+  if (visited.has(value)) {
     throw new Error('Failed to serialize circular reference');
+  }
   visited.add(value);
 
-  // array
-  if (Array.isArray(value))
+  if (Array.isArray(value)) {
     return value.map((e) =>
       serializeRefs(e, startDepth - 1, getEntityID, visited),
     );
+  }
 
-  // object
   return Object.fromEntries(
     Object.entries(value).map(([key, e]) => [
       key,
@@ -53,27 +52,26 @@ export function serializeRefs(
 export function deserializeRefs(
   value: unknown,
   entities: Record<string, unknown>,
-): unknown {
-  if (!value) return value;
+  visited = new Set<unknown>(),
+): void {
+  if (visited.has(value)) return;
+  visited.add(value);
 
-  if (typeof value !== 'object') return value;
+  if (!value) return;
 
-  if (isSerializedRef(value)) {
-    const id = value[refSigil];
-    if (!(id in entities)) {
-      throw new Error(`Failed to deserialize entity reference ${id}`);
+  if (typeof value !== 'object') return;
+
+  for (const k in value) {
+    if (!hasOwn(value, k)) continue;
+
+    if (isEncodedEntityRef(value[k])) {
+      const id = value[k][refKey];
+      if (!(id in entities)) {
+        throw new Error(`Referenced entity is missing: ${id}`);
+      }
+      value[k] = entities[id];
+    } else {
+      deserializeRefs(value[k], entities);
     }
-    return deserializeRefs(entities[id], entities);
   }
-
-  if (Array.isArray(value)) {
-    return value.map((e) => deserializeRefs(e, entities));
-  }
-
-  return Object.fromEntries(
-    Object.entries(value).map(([key, e]) => [
-      key,
-      deserializeRefs(e, entities),
-    ]),
-  );
 }

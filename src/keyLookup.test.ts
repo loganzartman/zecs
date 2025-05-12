@@ -48,7 +48,7 @@ describe('keyLookup', () => {
     );
 
     const e = ecs([health, position]);
-    e.add(e.entity({ health: 0, position: { x: 0, y: 0 } }));
+    e.add({ health: 0, position: { x: 0, y: 0 } });
 
     const lookup = keyLookup(
       e,

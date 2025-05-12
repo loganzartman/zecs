@@ -3,7 +3,7 @@ import packageJson from '../package.json';
 import type { Component } from './component';
 import type { Query } from './query';
 import { deserializeRefs, serializeRefs } from './serialization';
-import { type Empty, type Expand, entries, fromEntries } from './util';
+import { type Expand, entries, fromEntries } from './util';
 import { uuid } from './uuid';
 
 export type EntityLike = Record<string, unknown>;
@@ -32,8 +32,8 @@ export type ECSEntity<TECS extends ECS<EntityLike>> = TECS extends ECS<
   : never;
 
 export class ECS<TEntity extends EntityLike> {
-  #entityAliases: Map<string, Set<string>> = new Map();
-  #entityIDs = new WeakMap<object, string>();
+  #entityAliases = new Map<unknown, Set<string>>();
+  #entityID = new Map<unknown, string>();
   components: Readonly<EntityComponents<TEntity>>;
   entities: Record<string, Partial<TEntity>> = {};
   aliases: Record<string, string> = {};
@@ -54,39 +54,29 @@ export class ECS<TEntity extends EntityLike> {
   }
 
   #trackEntity<T extends object>(entity: T, id: string): T {
-    this.#entityIDs.set(entity, id);
+    this.#entityID.set(entity, id);
+    this.entities[id] = entity;
     return entity;
   }
 
   #serializationSchema() {
     return z.object({
       zecs: z.literal(packageJson.version),
-      entities: z
-        .record(z.string(), this.#entitySchema())
-        .transform((entities) =>
-          fromEntries(
-            entries(entities).map(([id, entity]) => [
-              id,
-              this.#trackEntity(entity, id),
-            ]),
-          ),
-        ),
+      entities: z.record(z.string(), this.#entitySchema()),
       aliases: z.record(z.string(), z.string()),
     });
   }
 
-  entity(data: Partial<TEntity>): Partial<TEntity> {
-    return data;
-  }
+  add(entity: Partial<TEntity> & Record<string, unknown>): Partial<TEntity> {
+    let id = uuid();
 
-  add(entity: Empty & Partial<TEntity & { [key: string]: unknown }>): string {
-    let id: string;
-    do {
+    let i = 0;
+    while (id in this.entities) {
+      if (++i > 4) throw new Error('Failed to add entity: unlucky.');
       id = uuid();
-    } while (id in this.entities);
+    }
 
-    this.entities[id] = this.#trackEntity(entity, id);
-    return id;
+    return this.#trackEntity(entity, id);
   }
 
   addAll(entities: Array<Partial<TEntity> & { [key: string]: unknown }>): void {
@@ -95,21 +85,29 @@ export class ECS<TEntity extends EntityLike> {
     }
   }
 
-  remove(id: string): void {
-    delete this.entities[id];
-    const aliases = this.#entityAliases.get(id);
+  remove(entity: Partial<TEntity>): void {
+    const id = this.getEntityID(entity);
+    if (id === undefined) {
+      throw new Error(`Can't remove entity: entity is not added to this ECS`);
+    }
+
+    const aliases = this.#entityAliases.get(entity);
     if (aliases) {
       for (const alias of aliases) {
         delete this.aliases[alias];
       }
     }
-    this.#entityAliases.delete(id);
+    this.#entityAliases.delete(entity);
+
+    delete this.entities[id];
+    this.#entityID.delete(entity);
   }
 
   removeAll(): void {
     this.entities = {};
     this.aliases = {};
     this.#entityAliases.clear();
+    this.#entityID.clear();
   }
 
   get(idOrAlias: string): Partial<TEntity> | undefined {
@@ -126,16 +124,23 @@ export class ECS<TEntity extends EntityLike> {
   }
 
   getEntityID(entity: Partial<TEntity>): string | undefined {
-    return this.#entityIDs.get(entity);
+    return this.#entityID.get(entity);
   }
 
-  alias(alias: string, id: string): void {
-    if (!(id in this.entities)) {
-      throw new Error(`Entity with id ${id} does not exist`);
+  getEntityByID(id: string): Partial<TEntity> | undefined {
+    return this.entities[id];
+  }
+
+  alias(alias: string, entity: Partial<TEntity>): void {
+    const id = this.getEntityID(entity);
+    if (id === undefined) {
+      throw new Error(
+        `Can't create alias "${alias}": entity is not added to this ECS`,
+      );
     }
-    const aliases = this.#entityAliases.get(id) ?? new Set();
+    const aliases = this.#entityAliases.get(entity) ?? new Set();
     aliases.add(alias);
-    this.#entityAliases.set(id, aliases);
+    this.#entityAliases.set(entity, aliases);
     this.aliases[alias] = id;
   }
 
@@ -150,8 +155,8 @@ export class ECS<TEntity extends EntityLike> {
         return existing;
       }
       const entity = entityFactory();
-      const id = this.add(entity);
-      this.alias(alias, id);
+      this.add(entity);
+      this.alias(alias, entity);
       return entity;
     };
   }
@@ -165,13 +170,23 @@ export class ECS<TEntity extends EntityLike> {
   }
 
   loadJSON(json: unknown) {
+    this.removeAll();
+
     const { entities, aliases } = this.#serializationSchema().parse(json);
-    this.entities = deserializeRefs(entities, entities) as Record<
-      string,
-      Partial<TEntity>
-    >;
+    deserializeRefs(entities, entities);
+
+    for (const [id, entity] of entries(entities)) {
+      this.#trackEntity(entity, id);
+    }
+
     for (const [alias, id] of entries(aliases)) {
-      this.alias(alias, id);
+      const entity = this.getEntityByID(id);
+      if (entity === undefined) {
+        throw new Error(
+          `Can't load alias "${alias}": entity with ID "${id}" not found`,
+        );
+      }
+      this.alias(alias, entity);
     }
   }
 }

@@ -1,5 +1,6 @@
 import { component } from './component';
 import { ecs } from './ecs';
+import { entitySchema } from './entitySchema';
 import { event } from './event';
 import { keyLookup } from './keyLookup';
 import { observe } from './observe';
@@ -10,6 +11,7 @@ import { system } from './system';
 export * from './component';
 export * from './query';
 export * from './ecs';
+export * from './entitySchema';
 export * from './event';
 export * from './keyLookup';
 export * from './observe';
@@ -19,6 +21,7 @@ export * from './schedule';
 export const zecs = {
   component,
   ecs,
+  entitySchema,
   event,
   keyLookup,
   observe,

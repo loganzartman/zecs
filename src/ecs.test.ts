@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { component } from './component';
 import { ecs } from './ecs';
+import { entitySchema } from './entitySchema';
 import { query } from './query';
 
 describe('ecs', () => {
@@ -14,20 +15,18 @@ describe('ecs', () => {
         }),
       );
       const myEcs = ecs([position]);
-      const entity = myEcs.entity({ position: { x: 1, y: 2 } });
-      const entityId = myEcs.add(entity);
+      const entity = myEcs.add({ position: { x: 1, y: 2 } });
 
-      myEcs.alias('entity', entityId);
+      myEcs.alias('entity', entity);
       expect(myEcs.get('entity')).toEqual(entity);
     });
 
     it('removes aliases when clearing all entities', () => {
       const health = component('health', z.number());
       const myEcs = ecs([health]);
-      const entity = myEcs.entity({ health: 10 });
-      const entityId = myEcs.add(entity);
+      const entity = myEcs.add({ health: 10 });
 
-      myEcs.alias('entity', entityId);
+      myEcs.alias('entity', entity);
       expect(myEcs.get('entity')).toEqual(entity);
       expect(Object.keys(myEcs.aliases)).toHaveLength(1);
 
@@ -39,18 +38,16 @@ describe('ecs', () => {
     it('removes alias when removing entity', () => {
       const health = component('health', z.number());
       const myEcs = ecs([health]);
-      const entity1 = myEcs.entity({ health: 10 });
-      const entity1Id = myEcs.add(entity1);
-      const entity2 = myEcs.entity({ health: 20 });
-      const entity2Id = myEcs.add(entity2);
+      const entity1 = myEcs.add({ health: 10 });
+      const entity2 = myEcs.add({ health: 20 });
 
-      myEcs.alias('entity1', entity1Id);
-      myEcs.alias('entity2', entity2Id);
+      myEcs.alias('entity1', entity1);
+      myEcs.alias('entity2', entity2);
       expect(myEcs.get('entity1')).toEqual(entity1);
       expect(myEcs.get('entity2')).toEqual(entity2);
       expect(Object.keys(myEcs.aliases)).toHaveLength(2);
 
-      myEcs.remove(entity1Id);
+      myEcs.remove(entity1);
       expect(myEcs.get('entity1')).toBeUndefined();
       expect(myEcs.get('entity2')).toEqual(entity2);
       expect(Object.keys(myEcs.aliases)).toHaveLength(1);
@@ -59,16 +56,15 @@ describe('ecs', () => {
     it('removes all aliases to entity when removing entity', () => {
       const health = component('health', z.number());
       const myEcs = ecs([health]);
-      const entity = myEcs.entity({ health: 10 });
-      const entityId = myEcs.add(entity);
+      const entity = myEcs.add({ health: 10 });
 
-      myEcs.alias('entity1', entityId);
-      myEcs.alias('entity2', entityId);
+      myEcs.alias('entity1', entity);
+      myEcs.alias('entity2', entity);
       expect(myEcs.get('entity1')).toEqual(entity);
       expect(myEcs.get('entity2')).toEqual(entity);
       expect(Object.keys(myEcs.aliases)).toHaveLength(2);
 
-      myEcs.remove(entityId);
+      myEcs.remove(entity);
       expect(myEcs.get('entity1')).toBeUndefined();
       expect(myEcs.get('entity2')).toBeUndefined();
       expect(Object.keys(myEcs.aliases)).toHaveLength(0);
@@ -85,17 +81,35 @@ describe('ecs', () => {
         }),
       );
       const myEcs = ecs([position]);
-      const entity = myEcs.entity({ position: { x: 1, y: 2 } });
-      const entityId = myEcs.add(entity);
+      const entity = myEcs.add({ position: { x: 1, y: 2 } });
 
-      myEcs.alias('entity', entityId);
-      expect(myEcs.get('entity')).toEqual(entity);
+      myEcs.alias('test-alias', entity);
+      expect(myEcs.get('test-alias')).toEqual(entity);
 
       const serialized = JSON.stringify(myEcs.toJSON());
 
       const newEcs = ecs([position]);
       newEcs.loadJSON(JSON.parse(serialized));
-      expect(newEcs.get('entity')).toEqual(entity);
+      expect(newEcs.get('test-alias')).toEqual(entity);
+    });
+
+    it('restores entity references', () => {
+      const name = component('name', z.string());
+      const friend = component('friend', entitySchema([name]));
+      const myEcs = ecs([name, friend]);
+
+      const entity1 = myEcs.add({ name: '' });
+      const entity2 = myEcs.add({ name: 'Bob', friend: entity1 });
+
+      const serialized = JSON.stringify(myEcs.toJSON());
+
+      const newEcs = ecs([name, friend]);
+      newEcs.loadJSON(JSON.parse(serialized));
+
+      const restoredEntities = [...newEcs.getAll()];
+      expect(restoredEntities).toHaveLength(2);
+      expect(restoredEntities).toContainEqual(entity1);
+      expect(restoredEntities).toContainEqual(entity2);
     });
   });
 

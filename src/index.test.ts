@@ -1,6 +1,7 @@
 import z from 'zod';
 import { component } from './component';
 import { type ECSWith, ecs } from './ecs';
+import { entitySchema } from './entitySchema';
 import { query } from './query';
 
 describe('zecs', () => {
@@ -125,7 +126,7 @@ describe('zecs', () => {
 
     it('can serialize and deserialize an ecs with entity references', () => {
       const x = component('x', z.number());
-      const ref = component('ref', z.unknown());
+      const ref = component('ref', entitySchema([x]));
       const e1 = {
         x: 1,
       };

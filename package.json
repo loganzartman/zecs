@@ -2,6 +2,9 @@
   "name": "zecs",
   "version": "0.17.0",
   "description": "strongly-typed entity-component-system implementation for hobby use",
+  "keywords": [],
+  "author": "Logan Zartman",
+  "license": "MIT",
   "source": "src/index.ts",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -21,10 +24,6 @@
     "check:ci": "biome ci .",
     "ci-checks": "pnpm types && pnpm check:ci && pnpm test"
   },
-  "keywords": [],
-  "author": "Logan Zartman",
-  "license": "MIT",
-  "packageManager": "pnpm@9.3.0+sha512.ee7b93e0c2bd11409c6424f92b866f31d3ea1bef5fbe47d3c7500cdc3c9668833d2e55681ad66df5b640c61fa9dc25d546efa54d76d7f8bf54b13614ac293631",
   "peerDependencies": {
     "zod": "^3.23.8"
   },
@@ -42,5 +41,6 @@
     "tsx": "^4.19.3",
     "typescript": "5.8.3",
     "zod": "^3.23.8"
-  }
+  },
+  "packageManager": "pnpm@9.3.0+sha512.ee7b93e0c2bd11409c6424f92b866f31d3ea1bef5fbe47d3c7500cdc3c9668833d2e55681ad66df5b640c61fa9dc25d546efa54d76d7f8bf54b13614ac293631"
 }

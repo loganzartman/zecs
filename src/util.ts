@@ -21,3 +21,10 @@ export function fromEntries<
 >(entries: TEntries): FromEntries<TEntries> {
   return Object.fromEntries(entries) as FromEntries<TEntries>;
 }
+
+export function hasOwn<K extends PropertyKey>(
+  obj: object,
+  key: K,
+): obj is { [key in K]: unknown } {
+  return Object.hasOwn(obj, key);
+}
