@@ -32,8 +32,8 @@ export type ECSEntity<TECS extends ECS<EntityLike>> = TECS extends ECS<
   : never;
 
 export class ECS<TEntity extends EntityLike> {
-  #entityAliases: Map<string, Set<string>> = new Map();
-  #entityIDs = new Map<object, string>();
+  #entityAliases = new Map<unknown, Set<string>>();
+  #entityIDs = new Map<unknown, string>();
   components: Readonly<EntityComponents<TEntity>>;
   entities: Record<string, Partial<TEntity>> = {};
   aliases: Record<string, string> = {};
@@ -94,13 +94,14 @@ export class ECS<TEntity extends EntityLike> {
     delete this.entities[id];
     this.#entityIDs.delete(entity);
 
-    const aliases = this.#entityAliases.get(id);
+    const aliases = this.#entityAliases.get(entity);
     if (aliases) {
       for (const alias of aliases) {
         delete this.aliases[alias];
       }
     }
-    this.#entityAliases.delete(id);
+    this.#entityAliases.delete(entity);
+    this.#entityIDs.delete(entity);
   }
 
   removeAll(): void {
@@ -138,9 +139,9 @@ export class ECS<TEntity extends EntityLike> {
         `Can't create alias "${alias}": entity is not added to this ECS`,
       );
     }
-    const aliases = this.#entityAliases.get(id) ?? new Set();
+    const aliases = this.#entityAliases.get(entity) ?? new Set();
     aliases.add(alias);
-    this.#entityAliases.set(id, aliases);
+    this.#entityAliases.set(entity, aliases);
     this.aliases[alias] = id;
   }
 
