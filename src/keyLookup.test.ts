@@ -6,7 +6,7 @@ import {
   ecs,
   query,
 } from '.';
-import { keyLookup } from './keyLookup';
+import { type KeyLookup, keyLookup } from './keyLookup';
 
 describe('keyLookup', () => {
   it('can look up entities by key', () => {
@@ -172,5 +172,49 @@ describe('keyLookup', () => {
     expect(lookup.get(entities[0])).toEqual(
       new Set([entities[0], entities[1]]),
     );
+  });
+
+  it('handles partial keys', () => {
+    const position = component(
+      'position',
+      z.object({ x: z.number(), y: z.number(), z: z.number() }),
+    );
+    const radius = component('radius', z.number());
+
+    const entities = [
+      { position: { x: 1, y: 2, z: 3 }, radius: 2 },
+      { position: { x: 2, y: 1, z: 2 }, radius: 1 },
+      { position: { x: 6, y: 7, z: 4 }, radius: 3 },
+    ];
+
+    const e = ecs([position, radius]);
+    e.addAll(entities);
+
+    const lookup = keyLookup(
+      e,
+      query().has(position),
+      ({ position }: { position: { x: number; y: number } }) => [
+        `${Math.floor(position.x / 5)},${Math.floor(position.y / 5)}`,
+      ],
+    );
+
+    // partial key
+    expect(lookup.get({ position: { x: 0, y: 0 } })).toEqual(
+      new Set([entities[0], entities[1]]),
+    );
+
+    function getAt(
+      x: number,
+      y: number,
+      z: number,
+      // default key type parameter
+      lookup: KeyLookup<ComponentsEntity<[typeof position]>>,
+    ) {
+      return lookup.get({
+        position: { x, y, z },
+      });
+    }
+
+    expect(getAt(1, 1, 1, lookup)).toEqual(new Set([entities[0], entities[1]]));
   });
 });

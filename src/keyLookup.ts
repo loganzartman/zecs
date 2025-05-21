@@ -1,7 +1,11 @@
 import type { ECS, EntityLike } from './ecs';
 import type { Query } from './query';
+import type { DeepPartial } from './util';
 
-export type KeyLookup<TOutput extends EntityLike, TKey> = {
+export type KeyLookup<
+  TOutput extends EntityLike,
+  TKey extends DeepPartial<TOutput> = TOutput,
+> = {
   /** Update the set of matching entities. */
   update(): void;
   /** Count the number of entities that match the key. */
@@ -21,7 +25,7 @@ export type KeyLookup<TOutput extends EntityLike, TKey> = {
 export function keyLookup<
   TEntity extends EntityLike,
   TOutput extends TEntity,
-  TKey extends Partial<TOutput>,
+  TKey extends DeepPartial<TOutput>,
 >(
   ecs: ECS<TEntity>,
   query: Query<TEntity, TOutput>,

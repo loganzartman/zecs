@@ -1,5 +1,9 @@
 export type Expand<T> = T extends any ? { [K in keyof T]: T[K] } : never;
 
+export type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
+};
+
 export type Empty = Record<never, never>;
 
 export type Entries<TObject extends Record<PropertyKey, unknown>> = {
