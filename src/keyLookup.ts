@@ -25,7 +25,7 @@ export type KeyLookup<
 export function keyLookup<
   TEntity extends EntityLike,
   TOutput extends TEntity,
-  TKey extends DeepPartial<TOutput>,
+  TKey extends DeepPartial<TOutput> = TOutput,
 >(
   ecs: ECS<TEntity>,
   query: Query<TEntity, TOutput>,
