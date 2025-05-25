@@ -101,6 +101,4 @@ sure can be tedious to juggle a bunch of system `update()`s.
 
 schedules take a list of systems and give you a handle to update all of them at once (in a strongly-typed fashion, of course.)
 
-if you know that one system should run after another--for example, apply gravity before integrating velocity--you can declare that in the `deps`. the scheduler will sort them for you.
-
 https://github.com/loganzartman/zecs/blob/d9a37c34e41668d38e9a66013ccb5b59133cce79/example/docs.ts#L190-L223

@@ -202,8 +202,6 @@ const kinematicsSystem = zecs.system({
   name: 'kinematics',
   query: zecs.query().has(position, velocity),
 
-  deps: [gravitySystem],
-
   updateParams: z.object({ dt: z.number() }),
 
   onUpdated({ entity, updateParams }) {
@@ -216,7 +214,7 @@ const scheduleEcs = zecs.ecs([position, velocity]);
 
 const schedule = await zecs.scheduleSystems(
   scheduleEcs,
-  [kinematicsSystem, gravitySystem],
+  [gravitySystem, kinematicsSystem],
   {},
 );
 
