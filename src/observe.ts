@@ -1,4 +1,4 @@
-import z, { type ZodType } from 'zod';
+import z, { type ZodType } from 'zod/v4';
 import type { ECS, EntityLike } from './ecs';
 import {
   type EventListenerType,

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v4';
 // replace this with `from 'zecs'` in your code!
 import { attachSystem, zecs } from '../src/index';
 

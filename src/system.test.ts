@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v4';
 import { component } from './component';
 import { ecs } from './ecs';
 import { query } from './query';

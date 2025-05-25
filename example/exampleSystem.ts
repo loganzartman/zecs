@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v4';
 import { zecs } from '../src/index';
 
 const mass = zecs.component('mass', z.number());

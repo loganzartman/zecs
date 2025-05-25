@@ -1,4 +1,4 @@
-import { type ZodType, type ZodTypeAny, z } from 'zod';
+import { type ZodType, type ZodTypeAny, z } from 'zod/v4';
 import packageJson from '../package.json';
 import type { Component } from './component';
 import type { Query } from './query';

@@ -1,4 +1,4 @@
-import { type ZodType, z } from 'zod';
+import { type ZodType, z } from 'zod/v4';
 import type { ComponentArrayLike, ComponentsEntity } from './ecs';
 import type { EncodedEntityRef } from './serialization';
 import { fromEntries } from './util';

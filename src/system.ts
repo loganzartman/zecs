@@ -1,4 +1,4 @@
-import { type ZodType, z } from 'zod';
+import { type ZodType, z } from 'zod/v4';
 import type { ECS, EntityLike } from './ecs';
 import { observe } from './observe';
 import type { Query } from './query';

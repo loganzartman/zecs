@@ -1,4 +1,4 @@
-import type { z } from 'zod';
+import type { z } from 'zod/v4';
 import type { Component } from './component';
 import type { ECS, EntityLike } from './ecs';
 import type { Empty } from './util';

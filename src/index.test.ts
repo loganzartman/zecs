@@ -1,4 +1,4 @@
-import z from 'zod';
+import z from 'zod/v4';
 import { component } from './component';
 import { type ECSWith, ecs } from './ecs';
 import { entitySchema } from './entitySchema';

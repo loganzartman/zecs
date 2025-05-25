@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v4';
 import { hasOwn } from './util';
 
 const refKey = '__zecs_ref__';

@@ -1,4 +1,4 @@
-import type { ZodTypeAny, z } from 'zod';
+import type { ZodTypeAny, z } from 'zod/v4';
 
 export type Component<TName extends string, TZodSchema extends ZodTypeAny> = {
   name: TName;
