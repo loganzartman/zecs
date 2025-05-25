@@ -32,7 +32,7 @@ describe('system', () => {
       velocity: { x: 1, y: 2 },
     });
 
-    const handle = await attachSystem(movementSystem, e, {});
+    const handle = await attachSystem(e, movementSystem, {});
 
     handle.update({ dt: 0.1 });
 
@@ -80,7 +80,7 @@ describe('system', () => {
       staticFlag: true,
     });
 
-    const handle = await attachSystem(movementSystem, e, {});
+    const handle = await attachSystem(e, movementSystem, {});
 
     handle.update({ dt: 0.1 });
 
@@ -120,7 +120,7 @@ describe('system', () => {
     e.add({ position: { x: 1, y: 2 } });
     e.add({ position: { x: 3, y: 4 } });
 
-    const handle = await attachSystem(testSystem, e, {});
+    const handle = await attachSystem(e, testSystem, {});
 
     handle.update({ value: 42 });
 
@@ -165,7 +165,7 @@ describe('system', () => {
     const entity1 = e.add({ counter: 0 });
     const entity2 = e.add({ counter: 0 });
 
-    const handle = await attachSystem(counterSystem, e, { initialTotal: 100 });
+    const handle = await attachSystem(e, counterSystem, { initialTotal: 100 });
 
     handle.update({ increment: 5 });
     handle.update({ increment: 10 });
@@ -226,7 +226,7 @@ describe('system', () => {
       velocity: { x: 3, y: 4 }, // 3-4-5 triangle for easy calculation
     });
 
-    const handle = await attachSystem(trackingSystem, e, {});
+    const handle = await attachSystem(e, trackingSystem, {});
 
     handle.update({ dt: 1 });
     handle.update({ dt: 1 });
@@ -266,7 +266,7 @@ describe('system', () => {
     });
 
     const e = ecs([position, active]);
-    const handle = await attachSystem(activeSystem, e, {});
+    const handle = await attachSystem(e, activeSystem, {});
 
     const entity = e.add({
       position: { x: 0, y: 0 },
@@ -312,7 +312,7 @@ describe('system', () => {
     const e = ecs([test]);
     e.add({ test: true });
 
-    const handle = await attachSystem(testSystem, e, {});
+    const handle = await attachSystem(e, testSystem, {});
 
     handle.update({ required: 'value' });
     handle.update({ required: 'value', optional: 42 });

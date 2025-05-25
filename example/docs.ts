@@ -86,7 +86,7 @@ const kinematics = zecs.system({
   },
 });
 
-const kinematicsHandle = await attachSystem(kinematics, ecs, {});
+const kinematicsHandle = await attachSystem(ecs, kinematics, {});
 
 kinematicsHandle.update({ dt: 0.016 });
 
@@ -131,7 +131,7 @@ if (!ctx) {
   throw new Error('Failed to get canvas context');
 }
 
-const drawLinesHandle = await attachSystem(drawLines, lineEcs, {
+const drawLinesHandle = await attachSystem(lineEcs, drawLines, {
   ctx,
 });
 drawLinesHandle.update({ ctx });
@@ -180,7 +180,7 @@ const drawSprites = zecs.system({
   },
 });
 
-const drawSpritesHandle = await attachSystem(drawSprites, ecs, {
+const drawSpritesHandle = await attachSystem(ecs, drawSprites, {
   texturePath: './texture.png',
 });
 
@@ -215,8 +215,8 @@ const kinematicsSystem = zecs.system({
 const scheduleEcs = zecs.ecs([position, velocity]);
 
 const schedule = await zecs.scheduleSystems(
-  [kinematicsSystem, gravitySystem],
   scheduleEcs,
+  [kinematicsSystem, gravitySystem],
   {},
 );
 

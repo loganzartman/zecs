@@ -3,10 +3,10 @@ import { component } from './component';
 import { ecs } from './ecs';
 import { query } from './query';
 import { formatSchedule, scheduleSystems } from './schedule';
-import { type UnknownSystem, system } from './system';
+import { system } from './system';
 
 describe('schedule', () => {
-  it('creates a schedule based on system dependencies', async () => {
+  it('creates a schedule based on the given ordering', async () => {
     const position = component(
       'position',
       z.object({ x: z.number(), y: z.number() }),
@@ -28,7 +28,6 @@ describe('schedule', () => {
       name: 'systemB',
       query: query().has(position, velocity),
       updateParams: z.object({ dt: z.number() }),
-      deps: [systemA],
       onUpdated: jest.fn(),
     });
 
@@ -36,24 +35,23 @@ describe('schedule', () => {
       name: 'systemC',
       query: query().has(position),
       updateParams: z.object({ dt: z.number() }),
-      deps: [systemB],
       onUpdated: jest.fn(),
     });
 
     const ecsInstance = ecs([position, velocity]);
     const schedule = await scheduleSystems(
-      [systemA, systemB, systemC],
       ecsInstance,
+      [systemA, systemB, systemC],
       {},
     );
 
     expect(schedule.steps.length).toBe(3);
-    expect(Array.from(schedule.steps[0])[0]).toBe(systemA);
-    expect(Array.from(schedule.steps[1])[0]).toBe(systemB);
-    expect(Array.from(schedule.steps[2])[0]).toBe(systemC);
+    expect(schedule.steps[0][0]).toBe(systemA);
+    expect(schedule.steps[1][0]).toBe(systemB);
+    expect(schedule.steps[2][0]).toBe(systemC);
   });
 
-  it('creates a schedule with multiple systems per step when possible', async () => {
+  it('creates a schedule with multiple systems per step', async () => {
     const position = component(
       'position',
       z.object({ x: z.number(), y: z.number() }),
@@ -82,26 +80,25 @@ describe('schedule', () => {
       name: 'systemC',
       query: query().has(position, velocity),
       updateParams: z.object({ dt: z.number() }),
-      deps: [systemA, systemB],
       onUpdated: jest.fn(),
     });
 
     const ecsInstance = ecs([position, velocity]);
     const schedule = await scheduleSystems(
-      [systemA, systemB, systemC],
       ecsInstance,
+      [[systemA, systemB], systemC],
       {},
     );
 
     expect(schedule.steps.length).toBe(2);
-    expect(schedule.steps[0].size).toBe(2); // systemA and systemB in same step
-    expect(schedule.steps[1].size).toBe(1); // only systemC in second step
-    expect(schedule.steps[0].has(systemA as UnknownSystem)).toBe(true);
-    expect(schedule.steps[0].has(systemB as UnknownSystem)).toBe(true);
-    expect(schedule.steps[1].has(systemC as UnknownSystem)).toBe(true);
+    expect(schedule.steps[0].length).toBe(2); // systemA and systemB in same step
+    expect(schedule.steps[1].length).toBe(1); // only systemC in second step
+    expect(schedule.steps[0]).toContain(systemA);
+    expect(schedule.steps[0]).toContain(systemB);
+    expect(schedule.steps[1]).toContain(systemC);
   });
 
-  it('executes systems in dependency order', async () => {
+  it('executes systems in order', async () => {
     const position = component('position', z.number());
 
     const executionOrder: string[] = [];
@@ -119,7 +116,6 @@ describe('schedule', () => {
       name: 'systemB',
       query: query().has(position),
       updateParams: z.object({ dt: z.number() }),
-      deps: [systemA],
       onUpdated: () => {
         executionOrder.push('systemB');
       },
@@ -129,7 +125,6 @@ describe('schedule', () => {
       name: 'systemC',
       query: query().has(position),
       updateParams: z.object({ dt: z.number() }),
-      deps: [systemB],
       onUpdated: () => {
         executionOrder.push('systemC');
       },
@@ -139,13 +134,18 @@ describe('schedule', () => {
     ecsInstance.add({ position: 1 });
 
     const schedule = await scheduleSystems(
-      [systemC, systemA, systemB],
       ecsInstance,
+      [systemA, [systemB, systemC]],
       {},
     );
     schedule.update({ dt: 0.1 });
 
-    expect(executionOrder).toEqual(['systemA', 'systemB', 'systemC']);
+    // ordering of B and C is undefined
+    try {
+      expect(executionOrder).toEqual(['systemA', 'systemB', 'systemC']);
+    } catch {
+      expect(executionOrder).toEqual(['systemA', 'systemC', 'systemB']);
+    }
   });
 
   it('initializes shared resources for each system', async () => {
@@ -182,7 +182,7 @@ describe('schedule', () => {
 
     const ecsInstance = ecs([position]);
 
-    await scheduleSystems([systemA, systemB], ecsInstance, {
+    await scheduleSystems(ecsInstance, [systemA, systemB], {
       length: 5,
       scale: 2,
     });
@@ -224,7 +224,7 @@ describe('schedule', () => {
     const ecsInstance = ecs([position]);
     ecsInstance.add({ position: 1 });
 
-    const schedule = await scheduleSystems([systemA, systemB], ecsInstance, {});
+    const schedule = await scheduleSystems(ecsInstance, [systemA, systemB], {});
 
     const updateParams = { dt: 0.1, multiplier: 2 };
     schedule.update(updateParams);
@@ -272,39 +272,11 @@ describe('schedule', () => {
 
     const ecsInstance = ecs([position]);
 
-    const schedule = await scheduleSystems([systemA, systemB], ecsInstance, {});
+    const schedule = await scheduleSystems(ecsInstance, [systemA, systemB], {});
     await schedule.stop();
 
     expect(destroyA).toHaveBeenCalled();
     expect(destroyB).toHaveBeenCalled();
-  });
-
-  it('throws error for circular dependencies', async () => {
-    const position = component('position', z.number());
-
-    const systemA = system({
-      name: 'systemA',
-      query: query().has(position),
-      updateParams: z.object({ dt: z.number() }),
-      onUpdated: jest.fn(),
-    });
-
-    const systemB = system({
-      name: 'systemB',
-      query: query().has(position),
-      updateParams: z.object({ dt: z.number() }),
-      deps: [systemA],
-      onUpdated: jest.fn(),
-    });
-
-    // Create circular dependency: A → B → A
-    systemA.deps = [systemB];
-
-    const ecsInstance = ecs([position]);
-
-    await expect(
-      scheduleSystems([systemA, systemB], ecsInstance, {}),
-    ).rejects.toThrow('Invalid dependency graph');
   });
 
   it('formats a schedule into a readable string', async () => {
@@ -321,12 +293,11 @@ describe('schedule', () => {
       name: 'systemB',
       query: query().has(position),
       updateParams: z.object({ dt: z.number() }),
-      deps: [systemA],
       onUpdated: jest.fn(),
     });
 
     const ecsInstance = ecs([position]);
-    const schedule = await scheduleSystems([systemA, systemB], ecsInstance, {});
+    const schedule = await scheduleSystems(ecsInstance, [systemA, systemB], {});
 
     const formatted = formatSchedule(schedule);
     expect(formatted).toBe('Step 0: systemA\nStep 1: systemB');

@@ -185,6 +185,7 @@ export async function makeExample({ n }: { n: number }) {
 
   // Create a schedule based on system dependencies
   const schedule = await zecs.scheduleSystems(
+    ecs,
     [
       gravitySystem,
       tetheringSystem,
@@ -194,7 +195,6 @@ export async function makeExample({ n }: { n: number }) {
       drawTetherSystem,
       drawColliderSystem,
     ],
-    ecs,
     {},
   );
 

@@ -112,8 +112,8 @@ export async function attachSystem<
   TShared,
   TEach,
 >(
-  system: System<TInput, TOutput, TInitParams, TUpdateParams, TShared, TEach>,
   ecs: ECS<TInput>,
+  system: System<TInput, TOutput, TInitParams, TUpdateParams, TShared, TEach>,
   initParams: TInitParams,
 ): Promise<SystemHandle<TUpdateParams>> {
   const {

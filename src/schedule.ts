@@ -9,87 +9,78 @@ import {
   attachSystem,
 } from './system';
 
-type CombinedInitParams<TSystems extends AnySystem[]> = TSystems extends [
-  infer TSystem extends AnySystem,
-  ...infer TRest extends AnySystem[],
-]
-  ? TRest extends []
-    ? SystemInitParams<TSystem>
-    : SystemInitParams<TSystem> & CombinedInitParams<TRest>
-  : never;
+type OnlyOrArray<T> = T | T[];
 
-type CombinedUpdateParams<TSystems extends AnySystem[]> = TSystems extends [
-  infer TSystem extends AnySystem,
-  ...infer TRest extends AnySystem[],
-]
-  ? TRest extends []
-    ? SystemUpdateParams<TSystem>
-    : SystemUpdateParams<TSystem> & CombinedUpdateParams<TRest>
-  : never;
+type StepInitParams<TStep extends OnlyOrArray<AnySystem>> =
+  TStep extends Array<AnySystem>
+    ? SystemInitParams<TStep[number]>
+    : TStep extends AnySystem
+      ? SystemInitParams<TStep>
+      : never;
+
+type CombinedInitParams<TSteps extends Array<OnlyOrArray<AnySystem>>> =
+  TSteps extends [
+    infer TStep extends OnlyOrArray<AnySystem>,
+    ...infer TRest extends Array<OnlyOrArray<AnySystem>>,
+  ]
+    ? TRest extends []
+      ? StepInitParams<TStep>
+      : StepInitParams<TStep> & CombinedInitParams<TRest>
+    : never;
+
+type StepUpdateParams<TStep extends OnlyOrArray<AnySystem>> =
+  TStep extends Array<AnySystem>
+    ? SystemUpdateParams<TStep[number]>
+    : TStep extends AnySystem
+      ? SystemUpdateParams<TStep>
+      : never;
+
+type CombinedUpdateParams<TSteps extends Array<OnlyOrArray<AnySystem>>> =
+  TSteps extends [
+    infer TStep extends OnlyOrArray<AnySystem>,
+    ...infer TRest extends Array<OnlyOrArray<AnySystem>>,
+  ]
+    ? TRest extends []
+      ? StepUpdateParams<TStep>
+      : StepUpdateParams<TStep> & CombinedUpdateParams<TRest>
+    : never;
 
 export type Schedule<TUpdateParams extends Record<string, unknown>> = {
-  steps: Array<Set<UnknownSystem>>;
+  steps: Array<Array<UnknownSystem>>;
   update(params: TUpdateParams): void;
   stop(): Promise<void>;
 };
 
 export async function scheduleSystems<
   TEntity extends EntityLike,
-  const TSystems extends System<TEntity, any, any, any, any, any>[],
+  const TSystems extends Array<
+    OnlyOrArray<System<TEntity, any, any, any, any, any>>
+  >,
 >(
-  systems: TSystems,
   ecs: ECS<TEntity>,
+  steps: TSystems,
   initParams: CombinedInitParams<TSystems>,
 ): Promise<Schedule<CombinedUpdateParams<TSystems>>> {
+  const normalizedSteps = steps.map((step) =>
+    Array.isArray(step) ? step : [step],
+  );
+
   const systemHandles: Map<
     TSystems[number],
     SystemHandle<CombinedUpdateParams<TSystems>>
   > = new Map(
     await Promise.all(
-      systems.map(
-        async (system: TSystems[number]) =>
-          [system, await attachSystem(system, ecs, initParams)] as const,
+      normalizedSteps.flatMap((step) =>
+        step.map(
+          async (system) =>
+            [system, await attachSystem(ecs, system, initParams)] as const,
+        ),
       ),
     ),
   );
 
-  const dependersMap = makeDependersMap(systems);
-  const remainingDeps = new Map<AnySystem, number>();
-  const removed = new Set<AnySystem>();
-
-  for (const system of systems) {
-    remainingDeps.set(system, system.deps?.length ?? 0);
-  }
-
-  const steps: Array<Set<TSystems[number]>> = [];
-  while (remainingDeps.size > 0) {
-    removed.clear();
-    const step = new Set<TSystems[number]>();
-    steps.push(step);
-
-    for (const [system, count] of remainingDeps) {
-      if (count > 0) {
-        continue;
-      }
-
-      step.add(system);
-      remainingDeps.delete(system);
-      removed.add(system);
-    }
-
-    for (const dep of removed) {
-      for (const depender of dependersMap.get(dep) ?? []) {
-        const remaining = remainingDeps.get(depender);
-        if (remaining === undefined) throw new Error('Depender not found');
-        remainingDeps.set(depender, remaining - 1);
-      }
-    }
-
-    if (step.size === 0) throw new Error('Invalid dependency graph');
-  }
-
   const update = (params: CombinedUpdateParams<TSystems>) => {
-    for (const step of steps) {
+    for (const step of normalizedSteps) {
       for (const system of step) {
         const handle = systemHandles.get(system);
         if (!handle) {
@@ -106,7 +97,11 @@ export async function scheduleSystems<
     );
   };
 
-  return { steps: steps as Array<Set<UnknownSystem>>, update, stop };
+  return {
+    steps: normalizedSteps as Array<Array<UnknownSystem>>,
+    update,
+    stop,
+  };
 }
 
 export function formatSchedule(
@@ -120,22 +115,4 @@ export function formatSchedule(
       return `Step ${index}: ${systems}`;
     })
     .join('\n');
-}
-
-function makeDependersMap<TSystems extends AnySystem[]>(
-  systems: TSystems,
-): WeakMap<TSystems[number], TSystems[number][]> {
-  const dependersMap = new WeakMap<AnySystem, AnySystem[]>();
-
-  for (const system of systems) {
-    for (const dep of system.deps ?? []) {
-      let dependers = dependersMap.get(dep);
-      if (!dependers) {
-        dependers = [];
-        dependersMap.set(dep, dependers);
-      }
-      dependers.push(system);
-    }
-  }
-  return dependersMap;
 }
