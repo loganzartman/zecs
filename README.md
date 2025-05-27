@@ -1,6 +1,10 @@
 # zecs
 
-strongly-typed, unopinionated, fast-enough **entity-component-system** system for hobby use
+strongly-typed, unopinionated, fast-enough **entity-component-system** system for hobby use[^1]
+
+[^1]: that's what i use it for, so ymmv
+
+_zecs_ is a **composition-based** approach to organizing data and updates!
 
 tightly integrated with [zod](https://zod.dev/) for schemas
 
@@ -23,14 +27,7 @@ import {component, query} from 'zecs';
 import {zecs} from 'zecs';
 ```
 
-> [!WARNING]
-> zecs is outsider art. i don't really make games, i just write typescript a lot and i'm making a game for fun.
-> 
-> i'm discovering what works as i go.
-
 ## basics
-
-zecs is a composition-based approach to organizing data and updates!
 
 ### component
 
