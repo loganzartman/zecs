@@ -7,6 +7,7 @@ import { observe } from './observe';
 import { query } from './query';
 import { scheduleSystems } from './schedule';
 import { system } from './system';
+import { attachSystem } from './system';
 
 export * from './component';
 export * from './query';
@@ -19,6 +20,7 @@ export * from './system';
 export * from './schedule';
 
 export const zecs = {
+  attachSystem,
   component,
   ecs,
   entitySchema,

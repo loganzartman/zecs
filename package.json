@@ -27,7 +27,9 @@
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "check:ci": "biome ci .",
-    "ci-checks": "pnpm types && pnpm check:ci && pnpm test"
+    "docs:fix": "embedme README.md",
+    "docs:check": "embedme --verify README.md",
+    "ci-checks": "pnpm types && pnpm check:ci && pnpm test && pnpm docs:check"
   },
   "peerDependencies": {
     "zod": "^3.25.28"
@@ -39,6 +41,7 @@
     "@parcel/packager-ts": "2.14.4",
     "@parcel/transformer-typescript-types": "2.14.4",
     "@types/jest": "^29.5.14",
+    "embedme": "^1.22.1",
     "jest": "^29.7.0",
     "mitata": "^1.0.34",
     "parcel": "2.14.4",

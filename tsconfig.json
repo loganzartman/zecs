@@ -9,12 +9,19 @@
     "esModuleInterop": true,
     "noImplicitAny": true,
     "strict": true,
-    "checkJs": true
+    "checkJs": true,
+
+    "paths": {
+      // used for documentation
+      "zecs": ["./src/index.ts"]
+    }
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.js",
     "example/**/*.ts",
-    "example/**/*.js"
+    "example/**/*.js",
+    "docs/**/*.ts",
+    "docs/**/*.js"
   ]
 }
