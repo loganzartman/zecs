@@ -28,7 +28,7 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - uses: pnpm/action-setup@v4
       - run: pnpm install
-      - run: pnpm ci
+      - run: pnpm ci-checks
       - run: pnpm build
       - uses: actions/upload-artifact@v4
         with:
@@ -55,4 +55,3 @@ jobs:
       - run: pnpm publish --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
- 
