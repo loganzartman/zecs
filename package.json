@@ -29,7 +29,7 @@
     "check:ci": "biome ci .",
     "docs:fix": "embedme README.md",
     "docs:ci": "embedme --verify README.md",
-    "ci": "pnpm types && pnpm check:ci && pnpm test && pnpm docs:ci"
+    "ci-checks": "pnpm types && pnpm check:ci && pnpm test && pnpm docs:ci"
   },
   "peerDependencies": {
     "zod": "^3.25.28"
