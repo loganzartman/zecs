@@ -1,4 +1,4 @@
-import { type ZodType, type ZodTypeAny, z } from 'zod/v4';
+import { type ZodType, z } from 'zod/v4';
 import packageJson from '../package.json';
 import type { Component } from './component';
 import type { Query } from './query';
@@ -8,7 +8,7 @@ import { uuid } from './uuid';
 
 export type EntityLike = Record<string, unknown>;
 
-export type ComponentArrayLike = Array<Component<string, ZodTypeAny>>;
+export type ComponentArrayLike = Array<Component<string, ZodType>>;
 
 export type ComponentsEntity<TComponents extends ComponentArrayLike> = Expand<{
   [TComponent in TComponents[number] as TComponent['name']]: z.infer<
@@ -38,8 +38,8 @@ export class ECS<TEntity extends EntityLike> {
   #entityAliases = new Map<unknown, Set<string>>();
   #entityID = new Map<unknown, string>();
   components: Readonly<EntityComponents<TEntity>>;
-  entities: Record<string, Partial<TEntity>> = {};
-  aliases: Record<string, string> = {};
+  entities: Map<string, Partial<TEntity>> = new Map();
+  aliases: Map<string, string> = new Map();
 
   /**
    * You probably want the {@link ecs} function instead.
@@ -61,7 +61,7 @@ export class ECS<TEntity extends EntityLike> {
 
   #trackEntity<T extends object>(entity: T, id: string): T {
     this.#entityID.set(entity, id);
-    this.entities[id] = entity;
+    this.entities.set(id, entity);
     return entity;
   }
 
@@ -83,7 +83,7 @@ export class ECS<TEntity extends EntityLike> {
     let id = uuid();
 
     let i = 0;
-    while (id in this.entities) {
+    while (this.entities.has(id)) {
       if (++i > 4) throw new Error('Failed to add entity: unlucky.');
       id = uuid();
     }
@@ -115,12 +115,12 @@ export class ECS<TEntity extends EntityLike> {
     const aliases = this.#entityAliases.get(entity);
     if (aliases) {
       for (const alias of aliases) {
-        delete this.aliases[alias];
+        this.aliases.delete(alias);
       }
     }
     this.#entityAliases.delete(entity);
 
-    delete this.entities[id];
+    this.entities.delete(id);
     this.#entityID.delete(entity);
   }
 
@@ -128,8 +128,8 @@ export class ECS<TEntity extends EntityLike> {
    * Remove all entities from the ECS.
    */
   removeAll(): void {
-    this.entities = {};
-    this.aliases = {};
+    this.entities.clear();
+    this.aliases.clear();
     this.#entityAliases.clear();
     this.#entityID.clear();
   }
@@ -143,10 +143,11 @@ export class ECS<TEntity extends EntityLike> {
    * @see {@link ECS.getEntityID}
    */
   get(idOrAlias: string): Partial<TEntity> | undefined {
-    if (idOrAlias in this.aliases) {
-      return this.entities[this.aliases[idOrAlias]];
+    const aliased = this.aliases.get(idOrAlias);
+    if (aliased) {
+      return this.entities.get(aliased);
     }
-    return this.entities[idOrAlias];
+    return this.entities.get(idOrAlias);
   }
 
   /**
@@ -155,9 +156,7 @@ export class ECS<TEntity extends EntityLike> {
    * @returns a generator that yields all entities
    */
   *getAll(): Generator<Partial<TEntity>> {
-    for (const id in this.entities) {
-      yield this.entities[id];
-    }
+    yield* this.entities.values();
   }
 
   /**
@@ -190,7 +189,7 @@ export class ECS<TEntity extends EntityLike> {
     const aliases = this.#entityAliases.get(entity) ?? new Set();
     aliases.add(alias);
     this.#entityAliases.set(entity, aliases);
-    this.aliases[alias] = id;
+    this.aliases.set(alias, id);
   }
 
   /**
@@ -237,8 +236,12 @@ export class ECS<TEntity extends EntityLike> {
   toJSON() {
     return {
       zecs: packageJson.version,
-      entities: serializeRefs(this.entities, 2, (e) => this.getEntityID(e)),
-      aliases: this.aliases,
+      entities: serializeRefs(
+        Object.fromEntries(this.entities.entries()),
+        2,
+        (e) => this.getEntityID(e),
+      ),
+      aliases: Object.fromEntries(this.aliases.entries()),
     };
   }
 

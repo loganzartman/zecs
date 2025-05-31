@@ -28,7 +28,7 @@ describe('ecs', () => {
 
       myEcs.alias('entity', entity);
       expect(myEcs.get('entity')).toEqual(entity);
-      expect(Object.keys(myEcs.aliases)).toHaveLength(1);
+      expect(myEcs.aliases.size).toBe(1);
 
       myEcs.removeAll();
       expect(myEcs.get('entity')).toBeUndefined();
@@ -45,12 +45,12 @@ describe('ecs', () => {
       myEcs.alias('entity2', entity2);
       expect(myEcs.get('entity1')).toEqual(entity1);
       expect(myEcs.get('entity2')).toEqual(entity2);
-      expect(Object.keys(myEcs.aliases)).toHaveLength(2);
+      expect(myEcs.aliases.size).toBe(2);
 
       myEcs.remove(entity1);
       expect(myEcs.get('entity1')).toBeUndefined();
       expect(myEcs.get('entity2')).toEqual(entity2);
-      expect(Object.keys(myEcs.aliases)).toHaveLength(1);
+      expect(myEcs.aliases.size).toBe(1);
     });
 
     it('removes all aliases to entity when removing entity', () => {
@@ -62,12 +62,12 @@ describe('ecs', () => {
       myEcs.alias('entity2', entity);
       expect(myEcs.get('entity1')).toEqual(entity);
       expect(myEcs.get('entity2')).toEqual(entity);
-      expect(Object.keys(myEcs.aliases)).toHaveLength(2);
+      expect(myEcs.aliases.size).toBe(2);
 
       myEcs.remove(entity);
       expect(myEcs.get('entity1')).toBeUndefined();
       expect(myEcs.get('entity2')).toBeUndefined();
-      expect(Object.keys(myEcs.aliases)).toHaveLength(0);
+      expect(myEcs.aliases.size).toBe(0);
     });
   });
 

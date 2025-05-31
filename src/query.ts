@@ -81,8 +81,7 @@ export class Query<TInput extends EntityLike, TOutput extends TInput> {
    * Iterate over all matching entities in the given ECS.
    */
   *query<TEntity extends TInput>(ecs: ECS<TEntity>): Generator<TOutput> {
-    for (const id in ecs.entities) {
-      const entity = ecs.entities[id];
+    for (const entity of ecs.entities.values()) {
       if (this.match(entity)) {
         yield entity;
       }
