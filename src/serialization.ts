@@ -1,13 +1,13 @@
-import { z } from 'zod/v4';
+import * as zm from 'zod/v4-mini';
 import { hasOwn } from './util';
 
 const refKey = '__zecs_ref__';
 
-export const encodedEntityRefSchema = z.object({
-  [refKey]: z.string(),
+export const encodedEntityRefSchema = zm.object({
+  [refKey]: zm.string(),
 });
 
-export type EncodedEntityRef = z.infer<typeof encodedEntityRefSchema>;
+export type EncodedEntityRef = zm.infer<typeof encodedEntityRefSchema>;
 
 export function isEncodedEntityRef(value: unknown): value is EncodedEntityRef {
   return encodedEntityRefSchema.safeParse(value).success;

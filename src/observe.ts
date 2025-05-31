@@ -1,4 +1,5 @@
-import z, { type ZodType } from 'zod/v4';
+import * as zm from 'zod/v4-mini';
+import type { $ZodType, output } from 'zod/v4/core';
 import type { ECS, EntityLike } from './ecs';
 import {
   type EventListenerType,
@@ -42,7 +43,7 @@ export class Observer<
 > implements ObserverEvents<TInput, TOutput, TParams>
 {
   readonly query: Query<TInput, TOutput>;
-  readonly params: ZodType<TParams>;
+  readonly params: $ZodType<TParams>;
 
   readonly matched: ObserverEvents<TInput, TOutput, TParams>['matched'];
   readonly preUpdate: ObserverEvents<TInput, TOutput, TParams>['preUpdate'];
@@ -62,17 +63,20 @@ export class Observer<
     on,
   }: {
     query: Query<TInput, TOutput>;
-    params: ZodType<TParams>;
+    params: $ZodType<TParams>;
     on?: ObserverInitialListeners<TInput, TOutput, TParams>;
   }) {
     this.query = query;
     this.params = params;
 
-    this.matched = event('matched', z.tuple([z.custom<TOutput>(), params]));
-    this.preUpdate = event('preUpdate', z.tuple([params]));
-    this.updated = event('updated', z.tuple([z.custom<TOutput>(), params]));
-    this.postUpdate = event('postUpdate', z.tuple([params]));
-    this.unmatched = event('unmatched', z.tuple([z.custom<TOutput>(), params]));
+    this.matched = event('matched', zm.tuple([zm.custom<TOutput>(), params]));
+    this.preUpdate = event('preUpdate', zm.tuple([params]));
+    this.updated = event('updated', zm.tuple([zm.custom<TOutput>(), params]));
+    this.postUpdate = event('postUpdate', zm.tuple([params]));
+    this.unmatched = event(
+      'unmatched',
+      zm.tuple([zm.custom<TOutput>(), params]),
+    );
 
     if (on?.matched) this.matched.on(on.matched);
     if (on?.preUpdate) this.preUpdate.on(on.preUpdate);
@@ -150,11 +154,11 @@ export class Observer<
 export function observe<
   TInput extends EntityLike,
   TOutput extends TInput,
-  TParams,
+  TParamsSchema extends $ZodType,
 >(options: {
   query: Query<TInput, TOutput>;
-  params: ZodType<TParams>;
-  on?: ObserverInitialListeners<TInput, TOutput, TParams>;
-}): Observer<TInput, TOutput, TParams> {
+  params: TParamsSchema;
+  on?: ObserverInitialListeners<TInput, TOutput, output<TParamsSchema>>;
+}): Observer<TInput, TOutput, output<TParamsSchema>> {
   return new Observer(options);
 }

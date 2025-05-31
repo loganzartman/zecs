@@ -1,4 +1,5 @@
-import { type ZodType, z } from 'zod/v4';
+import * as zm from 'zod/v4-mini';
+import type { $ZodType, output } from 'zod/v4/core';
 import type { ECS, EntityLike } from './ecs';
 import { observe } from './observe';
 import type { Query } from './query';
@@ -6,8 +7,8 @@ import type { Query } from './query';
 export type System<
   TInput extends EntityLike,
   TOutput extends TInput,
-  TInitParams extends Record<string, unknown>,
-  TUpdateParams extends Record<string, unknown>,
+  TInitParamsSchema extends $ZodType<Record<string, unknown>>,
+  TUpdateParamsSchema extends $ZodType<Record<string, unknown>>,
   TShared,
   TEach,
 > = {
@@ -16,21 +17,21 @@ export type System<
   /** Query that matches entities to be processed by this system */
   query: Query<TInput, TOutput>;
   /** Parameters schema for initializing the system */
-  initParams?: ZodType<TInitParams>;
+  initParams?: TInitParamsSchema;
   /** Parameters schema which must be passed to update() */
-  updateParams?: ZodType<TUpdateParams>;
+  updateParams?: TUpdateParamsSchema;
   /** Systems that must be updated before this one */
   deps?: System<any, any, any, any, any, any>[];
   /** Resources shared across all entities in the system */
   shared?: {
     /** Create shared resources for the system */
-    create: (p: { ecs: ECS<TInput>; initParams: TInitParams }) =>
+    create: (p: { ecs: ECS<TInput>; initParams: output<TInitParamsSchema> }) =>
       | TShared
       | Promise<TShared>;
     /** Destroy shared resources for the system */
     destroy?: (p: {
       ecs: ECS<TInput>;
-      initParams: TInitParams;
+      initParams: output<TInitParamsSchema>;
       shared: TShared;
     }) => void | Promise<void>;
   };
@@ -39,14 +40,14 @@ export type System<
     /** Create each resources for each matching entity */
     create: (p: {
       ecs: ECS<TInput>;
-      initParams: TInitParams;
+      initParams: output<TInitParamsSchema>;
       shared: TShared;
       entity: TOutput;
     }) => TEach;
     /** Destroy each resources for an entity */
     destroy?: (p: {
       ecs: ECS<TInput>;
-      initParams: TInitParams;
+      initParams: output<TInitParamsSchema>;
       shared: TShared;
       each: TEach;
     }) => void;
@@ -54,15 +55,15 @@ export type System<
   /** Called before processing any entities */
   onPreUpdate?: (p: {
     ecs: ECS<TInput>;
-    initParams: TInitParams;
-    updateParams: TUpdateParams;
+    initParams: output<TInitParamsSchema>;
+    updateParams: output<TUpdateParamsSchema>;
     shared: TShared;
   }) => void;
   /** Called for each matching entity */
   onUpdated?: (p: {
     ecs: ECS<TInput>;
-    initParams: TInitParams;
-    updateParams: TUpdateParams;
+    initParams: output<TInitParamsSchema>;
+    updateParams: output<TUpdateParamsSchema>;
     shared: TShared;
     each: TEach;
     entity: TOutput;
@@ -70,8 +71,8 @@ export type System<
   /** Called after processing all entities */
   onPostUpdate?: (p: {
     ecs: ECS<TInput>;
-    initParams: TInitParams;
-    updateParams: TUpdateParams;
+    initParams: output<TInitParamsSchema>;
+    updateParams: output<TUpdateParamsSchema>;
     shared: TShared;
   }) => void;
 };
@@ -81,20 +82,20 @@ export type AnySystem = System<any, any, any, any, any, any>;
 export type UnknownSystem = System<
   EntityLike,
   EntityLike,
-  Record<string, unknown>,
-  Record<string, unknown>,
+  $ZodType<Record<string, unknown>>,
+  $ZodType<Record<string, unknown>>,
   unknown,
   unknown
 >;
 
 export type SystemInitParams<TSystem extends AnySystem> =
-  TSystem extends System<any, any, infer TInitParams, any, any, any>
-    ? TInitParams
+  TSystem extends System<any, any, infer TInitParamsSchema, any, any, any>
+    ? output<TInitParamsSchema>
     : never;
 
 export type SystemUpdateParams<TSystem extends AnySystem> =
-  TSystem extends System<any, any, any, infer TUpdateParams, any, any>
-    ? TUpdateParams
+  TSystem extends System<any, any, any, infer TUpdateParamsSchema, any, any>
+    ? output<TUpdateParamsSchema>
     : never;
 
 export type SystemHandle<TUpdateParams extends Record<string, unknown>> = {
@@ -107,15 +108,22 @@ export type SystemHandle<TUpdateParams extends Record<string, unknown>> = {
 export async function attachSystem<
   TInput extends EntityLike,
   TOutput extends TInput,
-  TInitParams extends Record<string, unknown>,
-  TUpdateParams extends Record<string, unknown>,
+  TInitParamsSchema extends $ZodType<Record<string, unknown>>,
+  TUpdateParamsSchema extends $ZodType<Record<string, unknown>>,
   TShared,
   TEach,
 >(
   ecs: ECS<TInput>,
-  system: System<TInput, TOutput, TInitParams, TUpdateParams, TShared, TEach>,
-  initParams: TInitParams,
-): Promise<SystemHandle<TUpdateParams>> {
+  system: System<
+    TInput,
+    TOutput,
+    TInitParamsSchema,
+    TUpdateParamsSchema,
+    TShared,
+    TEach
+  >,
+  initParams: output<TInitParamsSchema>,
+): Promise<SystemHandle<output<TUpdateParamsSchema>>> {
   const {
     shared: sharedConfig,
     each: eachConfig,
@@ -139,9 +147,9 @@ export async function attachSystem<
     query: system.query,
     params:
       system.updateParams ??
-      (z.record(z.string(), z.unknown()) as ZodType<TUpdateParams>),
+      (zm.record(zm.string(), zm.unknown()) as unknown as TUpdateParamsSchema),
     on: {
-      preUpdate(updateParams: TUpdateParams) {
+      preUpdate(updateParams: output<TUpdateParamsSchema>) {
         onPreUpdate?.({ ecs, initParams, updateParams, shared });
       },
 
@@ -206,13 +214,13 @@ export async function attachSystem<
         each.delete(entity);
       },
 
-      postUpdate(updateParams: TUpdateParams) {
+      postUpdate(updateParams: output<TUpdateParamsSchema>) {
         onPostUpdate?.({ ecs, initParams, updateParams, shared });
       },
     },
   });
 
-  const update = (updateParams: TUpdateParams) => {
+  const update = (updateParams: output<TUpdateParamsSchema>) => {
     observer.update(ecs, updateParams);
   };
 
@@ -237,12 +245,26 @@ export async function attachSystem<
 export function system<
   TInput extends EntityLike,
   TOutput extends TInput,
-  TInitParams extends Record<string, unknown>,
-  TUpdateParams extends Record<string, unknown>,
+  TInitParamsSchema extends $ZodType<Record<string, unknown>>,
+  TUpdateParamsSchema extends $ZodType<Record<string, unknown>>,
   TShared,
   TEach,
 >(
-  config: System<TInput, TOutput, TInitParams, TUpdateParams, TShared, TEach>,
-): System<TInput, TOutput, TInitParams, TUpdateParams, TShared, TEach> {
+  config: System<
+    TInput,
+    TOutput,
+    TInitParamsSchema,
+    TUpdateParamsSchema,
+    TShared,
+    TEach
+  >,
+): System<
+  TInput,
+  TOutput,
+  TInitParamsSchema,
+  TUpdateParamsSchema,
+  TShared,
+  TEach
+> {
   return config;
 }

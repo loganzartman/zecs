@@ -1,4 +1,4 @@
-import type { ZodType } from 'zod/v4';
+import type { $ZodType, output } from 'zod/v4/core';
 
 declare const eventNameSymbol: unique symbol;
 
@@ -20,10 +20,10 @@ export type EventListenerType<TEventType extends EventType<string, any[]>> =
 
 export class EventType<TName extends string, TParams extends any[]> {
   name: TName;
-  params: ZodType<TParams>;
+  params: $ZodType<TParams>;
   #listeners = new Set<Listener<TName, TParams>>();
 
-  constructor(name: TName, params: ZodType<TParams>) {
+  constructor(name: TName, params: $ZodType<TParams>) {
     this.name = name;
     this.params = params;
   }
@@ -56,9 +56,9 @@ export class EventType<TName extends string, TParams extends any[]> {
   }
 }
 
-export function event<TName extends string, TParams extends any[]>(
-  name: TName,
-  params: ZodType<TParams>,
-): EventType<TName, TParams> {
+export function event<
+  TName extends string,
+  TParamsSchema extends $ZodType<any[]>,
+>(name: TName, params: TParamsSchema): EventType<TName, output<TParamsSchema>> {
   return new EventType(name, params);
 }

@@ -1,4 +1,4 @@
-import { type ZodType, z } from 'zod/v4';
+import * as zm from 'zod/v4-mini';
 import type { ComponentArrayLike, ComponentsEntity } from './ecs';
 import type { EncodedEntityRef } from './serialization';
 import { fromEntries } from './util';
@@ -10,15 +10,13 @@ import { fromEntries } from './util';
  */
 export function entitySchema<const TComponents extends ComponentArrayLike>(
   components: TComponents,
-): ZodType<Partial<ComponentsEntity<TComponents>> | EncodedEntityRef> {
-  return z
-    .object({
-      ...fromEntries(
-        components.map((component) => [
-          component.name as TComponents[number]['name'],
-          component.schema.optional() as TComponents[number]['schema'],
-        ]),
-      ),
-    })
-    .passthrough() as ZodType<Partial<ComponentsEntity<TComponents>>>;
+): zm.ZodMiniType<Partial<ComponentsEntity<TComponents>> | EncodedEntityRef> {
+  return zm.looseObject({
+    ...fromEntries(
+      components.map((component) => [
+        component.name as TComponents[number]['name'],
+        zm.optional(component.schema) as TComponents[number]['schema'],
+      ]),
+    ),
+  }) as zm.ZodMiniType<Partial<ComponentsEntity<TComponents>>>;
 }

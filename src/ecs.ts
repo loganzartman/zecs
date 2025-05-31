@@ -1,4 +1,5 @@
-import { type ZodType, z } from 'zod/v4';
+import * as zm from 'zod/v4-mini';
+import type { $ZodType, output } from 'zod/v4/core';
 import packageJson from '../package.json';
 import type { Component } from './component';
 import type { Query } from './query';
@@ -8,17 +9,17 @@ import { uuid } from './uuid';
 
 export type EntityLike = Record<string, unknown>;
 
-export type ComponentArrayLike = Array<Component<string, ZodType>>;
+export type ComponentArrayLike = Array<Component<string, $ZodType>>;
 
 export type ComponentsEntity<TComponents extends ComponentArrayLike> = Expand<{
-  [TComponent in TComponents[number] as TComponent['name']]: z.infer<
+  [TComponent in TComponents[number] as TComponent['name']]: output<
     TComponent['schema']
   >;
 }>;
 
 export type EntityComponents<TEntity extends EntityLike> = {
   [Key in keyof TEntity]: Key extends string
-    ? Component<Key, ZodType<TEntity[Key]>>
+    ? Component<Key, $ZodType<TEntity[Key]>>
     : never;
 };
 
@@ -48,15 +49,15 @@ export class ECS<TEntity extends EntityLike> {
     this.components = components;
   }
 
-  #entitySchema(): ZodType<Partial<TEntity>> {
-    return z.object(
+  #entitySchema(): $ZodType<Partial<TEntity>> {
+    return zm.object(
       fromEntries(
         entries(this.components).map(([name, component]) => [
           name,
-          component.schema.optional(),
+          zm.optional(component.schema),
         ]),
       ),
-    ) as ZodType<Partial<TEntity>>;
+    ) as $ZodType<Partial<TEntity>>;
   }
 
   #trackEntity<T extends object>(entity: T, id: string): T {
@@ -66,10 +67,10 @@ export class ECS<TEntity extends EntityLike> {
   }
 
   #serializationSchema() {
-    return z.object({
-      zecs: z.literal(packageJson.version),
-      entities: z.record(z.string(), this.#entitySchema()),
-      aliases: z.record(z.string(), z.string()),
+    return zm.object({
+      zecs: zm.literal(packageJson.version),
+      entities: zm.record(zm.string(), this.#entitySchema()),
+      aliases: zm.record(zm.string(), zm.string()),
     });
   }
 

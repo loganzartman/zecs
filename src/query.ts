@@ -1,4 +1,4 @@
-import type { z } from 'zod/v4';
+import type { output } from 'zod/v4/core';
 import type { Component } from './component';
 import type { ECS, EntityLike } from './ecs';
 import type { Empty } from './util';
@@ -33,11 +33,11 @@ export class Query<TInput extends EntityLike, TOutput extends TInput> {
     ...components: TComponents
   ): Query<
     Expand<
-      TInput & { [E in TComponents[number] as E['name']]: z.infer<E['schema']> }
+      TInput & { [E in TComponents[number] as E['name']]: output<E['schema']> }
     >,
     Expand<
       TOutput & {
-        [E in TComponents[number] as E['name']]: z.infer<E['schema']>;
+        [E in TComponents[number] as E['name']]: output<E['schema']>;
       }
     >
   > {
@@ -46,7 +46,7 @@ export class Query<TInput extends EntityLike, TOutput extends TInput> {
         entity: Partial<TInput>,
       ): entity is Expand<
         TOutput & {
-          [E in TComponents[number] as E['name']]: z.infer<E['schema']>;
+          [E in TComponents[number] as E['name']]: output<E['schema']>;
         }
       > =>
         this.filter(entity) &&
